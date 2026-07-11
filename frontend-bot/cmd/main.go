@@ -4,12 +4,13 @@ import (
 	"log"
 
 	"github.com/Enziofael/nutrigo/frontend-bot/internal/server"
-	env "github.com/Enziofael/nutrigo/shared/enviroment"
+	cfg "github.com/Enziofael/nutrigo/shared/config"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 func main() {
-	bot, err := tgbotapi.NewBotAPI(env.Get("TELEGRAM_BOT_API_TOKEN"))
+	bot, err := tgbotapi.NewBotAPI(cfg.GetBotToken())
 	if err != nil {
 		log.Fatalf("Panic: bot creation failed. Invalid token? Error: \"%s\"", err)
 	}
