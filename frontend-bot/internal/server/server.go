@@ -15,7 +15,7 @@ package server
 import (
 	"log"
 
-	processUpdate "github.com/Enziofael/nutrigo/frontend-bot/internal/actions"
+	processUpdate "github.com/Enziofael/nutrigo/frontend-bot/internal/processUpdate"
 	cfg "github.com/Enziofael/nutrigo/shared/config"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -48,8 +48,6 @@ func Start(bot *tgbotapi.BotAPI) {
 		if cfg.GetDebugLogging() {
 			log.Printf("Message from @%s: \"%s\"", update.Message.From.UserName, update.Message.Text)
 		}
-
-		go processUpdate.Delete(bot, update)
 
 		if update.Message.IsCommand() {
 			go processUpdate.Command(bot, update)

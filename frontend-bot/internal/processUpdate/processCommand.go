@@ -5,12 +5,14 @@ package processUpdate
 import (
 	"log"
 
+	"github.com/Enziofael/nutrigo/frontend-bot/internal/actions"
 	models "github.com/Enziofael/nutrigo/shared/domain-models/system/user"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 // Delegating commands to specific handlers
 func Command(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
+	go actions.Delete(bot, update)
 	switch update.Message.Command() {
 	case "start":
 		handleStartCommand(bot, update)
@@ -35,15 +37,15 @@ func handleStartCommand(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 
 	switch u.Status {
 	case models.StatusRequested:
-		sendRequested(bot, update)
+		actions.SendRequested(bot, update)
 	case models.StatusConfirmed, models.StatusAdmin:
-		sendMain(bot, update)
+		actions.SendMain(bot, update)
 	case models.StatusRestricted:
-		sendRestricted(bot, update)
+		actions.SendRestricted(bot, update)
 	case models.StatusBanned:
-		sendBanned(bot, update)
+		actions.SendBanned(bot, update)
 	default:
-		sendNew(bot, update)
+		actions.SendNew(bot, update)
 	}
 }
 
@@ -57,7 +59,7 @@ func handleAdminCommand(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	u := GetUserStub(update)
 
 	if u.Status == models.StatusAdmin {
-		sendAdmin(bot, update)
+		actions.SendAdmin(bot, update)
 	} else {
 		handleUnknownCommand(bot, update)
 	}

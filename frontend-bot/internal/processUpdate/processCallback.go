@@ -5,12 +5,14 @@ package processUpdate
 import (
 	"log"
 
+	"github.com/Enziofael/nutrigo/frontend-bot/internal/actions"
 	models "github.com/Enziofael/nutrigo/shared/domain-models/system/user"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 // Delegating callback queries to specific handlers
 func CallbackQuery(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
+	go actions.Delete(bot, update)
 	switch update.CallbackQuery.Data {
 	case "usage_request":
 		handleUsageRequestCallbackQuery(bot, update)
@@ -33,7 +35,7 @@ func handleUsageRequestCallbackQuery(bot *tgbotapi.BotAPI, update tgbotapi.Updat
 		if _, err := CreateUserStub(update); err != nil {
 			panic("CreateUserStub() failed")
 		}
-		editRequested(bot, update)
+		actions.EditRequested(bot, update)
 	}
 }
 
