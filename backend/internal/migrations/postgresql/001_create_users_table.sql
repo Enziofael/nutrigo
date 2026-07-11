@@ -5,5 +5,5 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT(CURRENT_TIMESTAMP) NOT NULL,
     last_messaged_at TIMESTAMP DEFAULT(CURRENT_TIMESTAMP) NOT NULL,
     status VARCHAR NOT NULL DEFAULT 'requested',
-	CONSTRAINT status_constraint CHECK(status IN('requested', 'confirmed', 'blocked', 'banned', 'admin'))
+	CONSTRAINT status_constraint CHECK(status IN('requested', 'confirmed', 'restricted', 'banned', 'admin'))
 );
