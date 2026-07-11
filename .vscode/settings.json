@@ -7,7 +7,6 @@
         "**/Thumbs.db": true,
         "docker-compose.yaml": true,
         ".gitignore": true,
-        ".env.example": true,
         ".vscode": true,
         "shared/api-models": true,
         "shared/domain-models": true,
@@ -19,7 +18,6 @@
     "hide-files.files": [
         "docker-compose.yaml",
         ".gitignore",
-        ".env.example",
         ".vscode",
         "shared/api-models",
         "shared/domain-models",
