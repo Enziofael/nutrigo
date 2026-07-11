@@ -1,3 +1,5 @@
+// ./frontend-bot/cmd/main.go
+
 package main
 
 import (
