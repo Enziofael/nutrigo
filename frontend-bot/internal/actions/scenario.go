@@ -65,14 +65,32 @@ func SendBanned(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 //
 // Panics when sending failed
 func SendNew(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Для того, чтобы пользоваться ботом, необходимо разрешение администратора {кнопка подать запрос}")
-	//Кнопка меняет сообщение на инфо о том, что заявка принята.
-	btn := tgbotapi.NewInlineKeyboardButtonData("lol", "usage_request")
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Для того, чтобы пользоваться ботом, необходимо разрешение администратора")
+
+	btn := tgbotapi.NewInlineKeyboardButtonData("Подать заявку", "usage_request")
 	kb := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(btn),
 	)
 	msg.ReplyMarkup = kb
 	if _, err := bot.Send(msg); err != nil {
+		panic(err)
+	}
+}
+
+// Sends message informing that command is unknown
+//
+// Panics when sending failed
+func SendUnknown(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Unknown command")
+
+	if _, err := bot.Send(msg); err != nil {
+		panic(err)
+	}
+}
+func EditUnknown(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
+	//TODO: фабрики!!!
+	edit := tgbotapi.NewEditMessageText(update.FromChat().ID, update.CallbackQuery.Message.MessageID, "Странно, я не знаю что делает эта кнопка :\\")
+	if _, err := bot.Request(edit); err != nil {
 		panic(err)
 	}
 }
