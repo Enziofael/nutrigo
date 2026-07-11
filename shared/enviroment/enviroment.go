@@ -1,3 +1,6 @@
+// ./backend/shared/enviroment.go
+
+// Helper package to work with godotenv. Allow to get parsed values
 package enviroment
 
 import (
@@ -5,16 +8,12 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"sync"
 
 	"github.com/joho/godotenv"
 )
 
-var (
-	once sync.Once
-)
-
-func load() {
+// Loads .env file in godotenv
+func init() {
 	envPath := filepath.Join("..", ".env")
 	err := godotenv.Load(envPath)
 	if err != nil {
@@ -22,14 +21,13 @@ func load() {
 	}
 }
 
+// Returns string env value
 func GetString(key string) string {
-	once.Do(load)
 	return os.Getenv(key)
 }
 
+// Returns bool env value. Panics if parse failed
 func GetBool(key string) bool {
-	once.Do(load)
-
 	b, err := strconv.ParseBool(GetString(key))
 	if err != nil {
 		log.Panicf("Invalid env value for %s: \"%s\". Should be bool", key, GetString(key))
@@ -38,35 +36,29 @@ func GetBool(key string) bool {
 	return b
 }
 
+// Returns int env value. Panics if parse failed
 func GetInt(key string) int {
-	once.Do(load)
-
 	i, err := strconv.Atoi(GetString(key))
 	if err != nil {
 		log.Panicf("Invalid env value for %s: \"%s\". Should be int", key, GetString(key))
 	}
-
 	return i
 }
 
+// Returns float64 env value. Panics if parse failed
 func GetDouble(key string) float64 {
-	once.Do(load)
-
 	f, err := strconv.ParseFloat(GetString(key), 64)
 	if err != nil {
 		log.Panicf("Invalid env value for %s: \"%s\". Should be float64", key, GetString(key))
 	}
-
 	return f
 }
 
+// Returns float32 env value. Panics if parse failed
 func GetFloat(key string) float32 {
-	once.Do(load)
-
 	f, err := strconv.ParseFloat(GetString(key), 32)
 	if err != nil {
 		log.Panicf("Invalid env value for %s: \"%s\". Should be float32", key, GetString(key))
 	}
-
 	return float32(f)
 }
