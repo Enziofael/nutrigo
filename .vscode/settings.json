@@ -5,14 +5,12 @@
         "**/.hg": true,
         "**/.DS_Store": true,
         "**/Thumbs.db": true,
-        "go.work": true,
         "docker-compose.yaml": true,
         ".gitignore": true,
         ".env.example": true,
         ".vscode": true
     },
     "hide-files.files": [
-        "go.work",
         "docker-compose.yaml",
         ".gitignore",
         ".env.example",
