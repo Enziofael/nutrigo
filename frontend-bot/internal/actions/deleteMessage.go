@@ -1,4 +1,6 @@
-package processMsg
+// ./frontend-bot/internal/usecases/deleteMessage.go
+
+package processUpdate
 
 import (
 	"log"

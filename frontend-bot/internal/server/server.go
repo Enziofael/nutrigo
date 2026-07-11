@@ -1,9 +1,21 @@
+// ./frontend-bot/internal/server/server.go
+
+// Package server runs the Telegram bot's main event loop, polling for updates
+// and delegating messages to specifig handlers.
+//
+// Usage:
+//
+//	bot, err := tgbotapi.NewBotAPI(token)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	server.Start(bot)
 package server
 
 import (
 	"log"
 
-	processMsg "github.com/Enziofael/nutrigo/frontend-bot/internal/usecases"
+	processUpdate "github.com/Enziofael/nutrigo/frontend-bot/internal/actions"
 	cfg "github.com/Enziofael/nutrigo/shared/config"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -21,6 +33,14 @@ func Start(bot *tgbotapi.BotAPI) {
 	log.Printf("Ready to receive updates\n\n")
 
 	for update := range updates {
+
+		if update.CallbackQuery != nil {
+			if cfg.GetDebugLogging() {
+				log.Printf("CallbackQuery from @%s: \"%s\"", update.CallbackQuery.From, update.CallbackData())
+			}
+			go processUpdate.CallbackQuery(bot, update)
+		}
+
 		if update.Message == nil {
 			continue
 		}
@@ -29,12 +49,11 @@ func Start(bot *tgbotapi.BotAPI) {
 			log.Printf("Message from @%s: \"%s\"", update.Message.From.UserName, update.Message.Text)
 		}
 
-		go processMsg.Delete(bot, update)
+		go processUpdate.Delete(bot, update)
 
 		if update.Message.IsCommand() {
-			go processMsg.Command(bot, update)
-		} else {
-
+			go processUpdate.Command(bot, update)
 		}
+
 	}
 }

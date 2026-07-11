@@ -4,27 +4,8 @@
         "**/.svn": true,
         "**/.hg": true,
         "**/.DS_Store": true,
-        "**/Thumbs.db": true,
-        "docker-compose.yaml": true,
-        ".gitignore": true,
-        ".vscode": true,
-        "shared/api-models": true,
-        "shared/domain-models": true,
-        "shared/gflog": true,
-        "shared/go.mod": true,
-        "shared/go.sum": true,
-        "backend/internal/migrations/postgresql": true
+        "**/Thumbs.db": true
     },
-    "hide-files.files": [
-        "docker-compose.yaml",
-        ".gitignore",
-        ".vscode",
-        "shared/api-models",
-        "shared/domain-models",
-        "shared/gflog",
-        "shared/go.mod",
-        "shared/go.sum",
-        "backend/internal/migrations/postgresql"
-    ]
+    "hide-files.files": []
     
 }
