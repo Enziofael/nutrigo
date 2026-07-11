@@ -3,34 +3,28 @@ package main
 import (
 	"log"
 
+	"github.com/Enziofael/nutrigo/frontend-bot/internal/server"
 	env "github.com/Enziofael/nutrigo/shared/enviroment"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 func main() {
-	env.Load()
-
-	bot, err := tgbotapi.NewBotAPI(env.Get("TELEGRAM_BOT_TOKEN"))
+	bot, err := tgbotapi.NewBotAPI(env.Get("TELEGRAM_BOT_API_TOKEN"))
 	if err != nil {
-		log.Panic(err)
+		log.Fatalf("Panic: bot creation failed. Invalid token? Error: \"%s\"", err)
 	}
 
-	//bot.Debug = true
+	//------
+	// bot.Debug = true
+	//------
 
-	log.Printf("Authorized on account %s", bot.Self.UserName)
+	log.Printf(`Bot init successful.
+	Authorized on account @%s
+	ID: %d
+	CanJoinGroups: %t
+	CanReadAllGroupMessages: %t
+	SupportsInlineQueries: %t`,
+		bot.Self.UserName, bot.Self.ID, bot.Self.CanJoinGroups, bot.Self.CanReadAllGroupMessages, bot.Self.SupportsInlineQueries)
 
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
-
-	updates := bot.GetUpdatesChan(u)
-
-	for update := range updates {
-		if update.Message != nil { // If we got a message
-			log.Printf("[%s] %s\t %d", update.Message.From.UserName, update.Message.Text, update.Message.From.ID)
-
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-			msg.ReplyToMessageID = update.Message.MessageID
-			bot.Send(msg)
-		}
-	}
+	server.Start(bot)
 }
