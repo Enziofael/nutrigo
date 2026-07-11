@@ -1,4 +1,4 @@
-// ./frontend-bot/internal/usecases/deleteMessage.go
+// ./frontend-bot/internal/actions/deleteMessage.go
 
 package actions
 

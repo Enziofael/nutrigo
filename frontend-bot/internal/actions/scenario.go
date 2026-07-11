@@ -1,3 +1,5 @@
+// ./frontend-bot/internal/actions/scenario.go
+
 package actions
 
 import (

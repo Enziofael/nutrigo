@@ -1,4 +1,4 @@
-// ./frontend-bot/internal/usecases/processCallback.go
+// ./frontend-bot/internal/processUpdate/processCallback.go
 
 package processUpdate
 

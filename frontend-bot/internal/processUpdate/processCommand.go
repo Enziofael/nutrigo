@@ -1,4 +1,4 @@
-// ./frontend-bot/internal/usecases/processCommands.go
+// ./frontend-bot/internal/processUpdate/processCommands.go
 
 package processUpdate
 
