@@ -1,0 +1,52 @@
+version: '3'
+
+tasks:
+  tidy:
+    desc: Update all dependencies
+    cmds:
+      - go work sync
+      - cd shared && go mod tidy
+      - cd backend && go mod tidy
+      - cd frontend-bot && go mod tidy
+
+  bot:
+    desc: Build Telegram bot
+    cmds:
+      - cd frontend-bot && go build -o ../bin/bot.exe ./cmd/bot
+
+  backend:
+    desc: Build Backend
+    cmds:
+      - cd backend && go build -o ../bin/backend.exe ./cmd/api
+
+  desktop:
+    desc: Build Desktop app
+    cmds:
+      - cd frontend-desktop && go build -o ../bin/desktop.exe
+
+  run-bot:
+    desc: Run Telegram bot
+    cmds:
+      - cd frontend-bot && go run ./cmd/main.go
+
+  run-backend:
+    desc: Run Backend
+    cmds:
+      - cd backend && go run ./cmd/api/main.go
+
+  all:
+    desc: Build everything
+    cmds:
+      - task: backend
+      - task: bot
+      - task: desktop
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf bin
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test ./...

@@ -5,18 +5,19 @@
         "**/.hg": true,
         "**/.DS_Store": true,
         "**/Thumbs.db": true,
-        "go.work": true,
-        "docker-compose.yaml": true,
-        ".gitignore": true,
-        ".env.example": true,
-        ".vscode": true
+        "[!f]*/**": true,
+        "f[!r]*/**": true,
+        "fr[!o]*/**": true,
+        "fro[!n]*/**": true,
+        "fron[!t]*/**": true,
+        "front[!e]*/**": true,
+        "fronte[!n]*/**": true,
+        "fronten[!d]*/**": true,
+        "frontend[!-]*/**": true,
+        "frontend-[!b]*/**": true,
+        "frontend-b[!o]*/**": true,
+        "frontend-bo[!t]*/**": true
     },
-    "hide-files.files": [
-        "go.work",
-        "docker-compose.yaml",
-        ".gitignore",
-        ".env.example",
-        ".vscode"
-    ]
+    "hide-files.files": []
     
 }
