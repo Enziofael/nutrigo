@@ -5,12 +5,18 @@
         "**/.hg": true,
         "**/.DS_Store": true,
         "**/Thumbs.db": true,
-        ".vscode": true,
-        ".vscode/settings.json": true
+        "go.work": true,
+        "docker-compose.yaml": true,
+        ".gitignore": true,
+        ".env.example": true,
+        ".vscode": true
     },
     "hide-files.files": [
-        ".vscode",
-        ".vscode/settings.json",
-        "shared/gflog"
+        "go.work",
+        "docker-compose.yaml",
+        ".gitignore",
+        ".env.example",
+        ".vscode"
     ]
+    
 }

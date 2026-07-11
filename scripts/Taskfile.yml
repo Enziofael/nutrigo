@@ -41,9 +41,9 @@ tasks:
   tidy:
     desc: Format code
     cmds:
-      - cd ../backend && go mod tidy
-      - cd ../frontend-bot && go mod tidy
-      - cd ../shared && go mod tidy
+      - cd ../shared && go mod tidy && go mod download
+      - cd ../backend && go mod tidy && go mod download
+      - cd ../frontend-bot && go mod tidy && go mod download
 
   test:
     desc: Run all tests
