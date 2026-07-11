@@ -3,8 +3,6 @@
 package processUpdate
 
 import (
-	"log"
-
 	"github.com/Enziofael/nutrigo/frontend-bot/internal/actions"
 	models "github.com/Enziofael/nutrigo/shared/domain-models/system/user"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -69,11 +67,7 @@ func handleAdminCommand(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 //
 // Panics if sending failed
 func handleUnknownCommand(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Unknown command")
-
-	if _, err := bot.Send(msg); err != nil {
-		panic(err)
-	}
+	actions.SendUnknown(bot, update)
 }
 
 // DEV-ONLY stub function
@@ -87,7 +81,6 @@ func handleUnknownCommand(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 // /command status
 func GetUserStub(update tgbotapi.Update) models.User {
 	if update.Message != nil && update.Message.IsCommand() {
-		log.Print("Command")
 		return models.User{Status: models.Status(update.Message.CommandArguments())}
 	} else if update.CallbackQuery != nil && update.CallbackQuery.Data == "usage_request" {
 		return models.User{}
