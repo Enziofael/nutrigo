@@ -14,7 +14,19 @@
         "shared/gflog": true,
         "shared/go.mod": true,
         "shared/go.sum": true,
-        "backend/internal/migrations/postgresql": true
+        "backend/internal/migrations/postgresql": true,
+        "[!f]*/**": true,
+        "f[!r]*/**": true,
+        "fr[!o]*/**": true,
+        "fro[!n]*/**": true,
+        "fron[!t]*/**": true,
+        "front[!e]*/**": true,
+        "fronte[!n]*/**": true,
+        "fronten[!d]*/**": true,
+        "frontend[!-]*/**": true,
+        "frontend-[!b]*/**": true,
+        "frontend-b[!o]*/**": true,
+        "frontend-bo[!t]*/**": true
     },
     "hide-files.files": [
         "docker-compose.yaml",
