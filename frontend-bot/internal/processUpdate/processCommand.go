@@ -1,73 +1,85 @@
 // ./frontend-bot/internal/processUpdate/processCommands.go
 
+// ТАК КАК handle фунции маршрутизируют обработку ПЕРСОНАЛИЗИРОВАННО
+// То их задача это:
+// Получить от handler'а бота, апдейт, пользователя.
+// Посмотреть данные пользователя и решить ЧТО нужно сделать.
+// в зависимости от состояния
+// И на основе этого вызвать СЛОЙ СЦЕНАРИЯ
+// Сценарный слой вызовет сервисные слои с бизнес логикой, вызовет action'ы, установит новое состояние для пользователя.
+// СЕРВИСНЫЕ СЛОИ уже будут работать с бд
+
 package processUpdate
 
 import (
-	"github.com/Enziofael/nutrigo/frontend-bot/internal/actions"
+	"github.com/Enziofael/nutrigo/frontend-bot/internal/scenarios"
 	models "github.com/Enziofael/nutrigo/shared/domain-models/system/user"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+// # Router function
+//
 // Delegating commands to specific handlers
-func Command(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-	go actions.Delete(bot, update)
+// by defining which exactly command bot recieved
+func CommandRouter(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
+
+	user := GetUserStub(update)
+
 	switch update.Message.Command() {
 	case "start":
-		handleStartCommand(bot, update)
+		handleStartCommand(bot, update, user)
 	case "admin":
-		handleAdminCommand(bot, update)
+		handleAdminCommand(bot, update, user)
 	default:
-		handleUnknownCommand(bot, update)
+		handleUnknownCommand(bot, update, user)
 	}
 }
 
 // Handler for /start command
 //
 // Checks the user's status and sends response depending on its value.
-func handleStartCommand(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
+func handleStartCommand(bot *tgbotapi.BotAPI, update tgbotapi.Update, user models.User) {
 	//Checking user's status
 	// not found? -> Requesting form
 	// requested? -> Info to wait
 	// confirmed/admin? -> Main form
 	// restricted? -> Appeal form
 	// banned? -> Info message
-	u := GetUserStub(update)
 
-	switch u.Status {
+	switch user.Status {
 	case models.StatusRequested:
-		actions.SendRequested(bot, update)
+		scenarios.SendWaitToConfirm(bot, update, user)
 	case models.StatusConfirmed, models.StatusAdmin:
-		actions.SendMain(bot, update)
+		scenarios.SendMainMenu(bot, update, user)
 	case models.StatusRestricted:
-		actions.SendRestricted(bot, update)
+		scenarios.SendRestrictedAppealForm(bot, update, user)
 	case models.StatusBanned:
-		actions.SendBanned(bot, update)
+		scenarios.SendYouWasBanned(bot, update, user)
 	default:
-		actions.SendNew(bot, update)
+		scenarios.SendSuggestUsageRequest(bot, update, user)
 	}
 }
 
 // Handler for /admin command
 //
 // Checks the user's status and send response depending on its value.
-func handleAdminCommand(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
+func handleAdminCommand(bot *tgbotapi.BotAPI, update tgbotapi.Update, user models.User) {
 	//Checking user's status
 	// admin? -> Send admin menu
 	// else handleUnknownCommand()
-	u := GetUserStub(update)
 
-	if u.Status == models.StatusAdmin {
-		actions.SendAdmin(bot, update)
+	if user.Status == models.StatusAdmin {
+		scenarios.SendAdminMenu(bot, update, user)
 	} else {
-		handleUnknownCommand(bot, update)
+		handleUnknownCommand(bot, update, user)
 	}
 }
 
 // Handler for non-existent commands
 //
 // Panics if sending failed
-func handleUnknownCommand(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-	actions.SendUnknown(bot, update)
+func handleUnknownCommand(bot *tgbotapi.BotAPI, update tgbotapi.Update, user models.User) {
+	scenarios.SendUnknownCommand(bot, update, user)
 }
 
 // DEV-ONLY stub function
