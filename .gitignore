@@ -1,5 +1,5 @@
 .env
-/sandbox/
-/shared/gflog/
+sandbox/
+shared/gflog/
 .env
-/.vscode/
+.vscode/
