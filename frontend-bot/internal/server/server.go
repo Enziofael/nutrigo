@@ -34,13 +34,13 @@ func Start(bot *tgbotapi.BotAPI) {
 		
 		//Callback update
 		if update.CallbackQuery != nil {
-			go processUpdate.CallbackQuery(bot, update)
+			go processUpdate.CallbackQueryRouter(bot, update)
 			continue
 		}
 
 		//Command update
 		if update.Message != nil && update.Message.IsCommand() {
-			go processUpdate.Command(bot, update)
+			go processUpdate.CommandRouter(bot, update)
 			continue
 		}
 	}
