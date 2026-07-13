@@ -5,11 +5,21 @@ package main
 import (
 	"log"
 
+	"github.com/Enziofael/nutrigo/frontend-bot/internal/factory"
 	"github.com/Enziofael/nutrigo/frontend-bot/internal/server"
+	"github.com/Enziofael/nutrigo/frontend-bot/internal/templates"
 	cfg "github.com/Enziofael/nutrigo/shared/config"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
+
+func init() {
+	m, err := templates.NewManager()
+	if err != nil {
+		log.Fatal(err)
+	}
+	factory.SetTemplateManager(m)
+}
 
 func main() {
 	bot, err := tgbotapi.NewBotAPI(cfg.GetBotToken())
@@ -18,7 +28,7 @@ func main() {
 	}
 
 	//------
-	// bot.Debug = true
+	bot.Debug = true
 	//------
 
 	log.Printf(`Bot init successful.
