@@ -11,7 +11,7 @@ import (
 // Delegating commands to specific handlers
 func Command(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	
-	//go actions.StartStatus() или типо того. Статус бота (пишет, отправляет и тд)
+	//go actions.StartStatus() или типо того. Статус бота (пишет, отправляет и тд) + defer endStatus()
 
 	// Получаем пользователя. Обновляем state пользователя.
 	// в handle надо передавать пользователя.

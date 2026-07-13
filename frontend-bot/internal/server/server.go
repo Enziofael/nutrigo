@@ -16,15 +16,12 @@ import (
 	"log"
 
 	processUpdate "github.com/Enziofael/nutrigo/frontend-bot/internal/processUpdate"
-	cfg "github.com/Enziofael/nutrigo/shared/config"
+	//cfg "github.com/Enziofael/nutrigo/shared/config"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 // Starting bot cycle.
 func Start(bot *tgbotapi.BotAPI) {
-	if debugLogging := cfg.GetDebugLogging(); debugLogging {
-		log.Printf("Debug logging enabled")
-	}
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 30
@@ -34,6 +31,7 @@ func Start(bot *tgbotapi.BotAPI) {
 
 	// В цикле проходимся по каналу апдейтов, при получении раскидываем их соответствующим хендлерам в горутины, сам цикл при этом идет дальше
 	for update := range updates {
+		
 		//Callback update
 		if update.CallbackQuery != nil {
 			go processUpdate.CallbackQuery(bot, update)
