@@ -10,6 +10,12 @@ import (
 
 // Delegating callback queries to specific handlers
 func CallbackQuery(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
+
+	//go actions.StartStatus() или типо того. Статус бота (пишет, отправляет и тд)
+
+	// Получаем пользователя. Обновляем state пользователя.
+	// в handle надо передавать пользователя.
+
 	switch update.CallbackQuery.Data {
 	case "usage_request":
 		handleUsageRequestCallbackQuery(bot, update)

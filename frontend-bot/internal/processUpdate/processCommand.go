@@ -10,7 +10,13 @@ import (
 
 // Delegating commands to specific handlers
 func Command(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-	go actions.Delete(bot, update)
+	
+	//go actions.StartStatus() или типо того. Статус бота (пишет, отправляет и тд)
+
+	// Получаем пользователя. Обновляем state пользователя.
+	// в handle надо передавать пользователя.
+
+	go actions.DeleteMessage(bot, tgbotapi.NewDeleteMessage(update.Message.Chat.ID, update.Message.MessageID))
 	switch update.Message.Command() {
 	case "start":
 		handleStartCommand(bot, update)
