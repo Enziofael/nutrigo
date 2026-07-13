@@ -84,7 +84,7 @@ func SendNew(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 // Panics when sending failed
 func SendUnknown(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Unknown command")
-
+	
 	if _, err := bot.Send(msg); err != nil {
 		panic(err)
 	}
