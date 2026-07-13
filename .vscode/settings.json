@@ -4,20 +4,15 @@
         "**/.svn": true,
         "**/.hg": true,
         "**/.DS_Store": true,
-        "**/Thumbs.db": true,
-        "[!f]*/**": true,
-        "f[!r]*/**": true,
-        "fr[!o]*/**": true,
-        "fro[!n]*/**": true,
-        "fron[!t]*/**": true,
-        "front[!e]*/**": true,
-        "fronte[!n]*/**": true,
-        "fronten[!d]*/**": true,
-        "frontend[!-]*/**": true,
-        "frontend-[!b]*/**": true,
-        "frontend-b[!o]*/**": true,
-        "frontend-bo[!t]*/**": true
+        "**/Thumbs.db": true
     },
-    "hide-files.files": []
+    "hide-files.files": [],
+
+    "editor.suggest.sortOrder": "recentlyUsedByPrefix",
+    "editor.suggest.showInlineDetails": true,
+    // "editor.suggest.maxVisibleSuggestions": 20, ← удалено
+    "gopls": {
+        "ui.completion.matcher": "Fuzzy"
+    }
     
 }
