@@ -33,22 +33,15 @@ func Start(bot *tgbotapi.BotAPI) {
 	log.Printf("Ready to receive updates\n\n")
 
 	// В цикле проходимся по каналу апдейтов, при получении раскидываем их соответствующим хендлерам в горутины, сам цикл при этом идет дальше
-	// TODO: единственное мне не нравится как выглядит логирование но это потом сделаю
 	for update := range updates {
 		//Callback update
 		if update.CallbackQuery != nil {
-			if cfg.GetDebugLogging() {
-				log.Printf("CallbackQuery from @%s: \"%s\"", update.CallbackQuery.From, update.CallbackData())
-			}
 			go processUpdate.CallbackQuery(bot, update)
 			continue
 		}
 
 		//Command update
 		if update.Message != nil && update.Message.IsCommand() {
-			if cfg.GetDebugLogging() {
-				log.Printf("Command from @%s: \"%s\"", update.Message.From.UserName, update.Message.Text)
-			}
 			go processUpdate.Command(bot, update)
 			continue
 		}
