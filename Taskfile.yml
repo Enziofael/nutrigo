@@ -51,27 +51,23 @@ tasks:
     cmds:
       - go test ./...
 
-  ws-clear:
-    desc: Set vscode explorer hide settings to show-all workspace
+  ws:
+    desc: opens workspace
+    vars:
+      n: '{{.n | default "default"}}'
     cmds:
-      - powershell -Command "Copy-Item -Path .vscode\default.json -Destination .vscode\settings.json -Force"
+      - powershell -Command "Copy-Item -Path .vscode\{{.n}}.json -Destination .vscode\settings.json -Force"
 
-  ws-back:
-    desc: Set vscode explorer hide settings to backend workspace
+  ws-create:
+    desc: creates workspace
+    vars:
+      n: '{{.n}}'
     cmds:
-      - powershell -Command "Copy-Item -Path .vscode\backend_workspace.json -Destination .vscode\settings.json -Force"
+      - powershell -Command "Copy-Item -Path .vscode\default.json  -Destination .vscode\{{.n}}.json"
 
-  ws-bot:
-    desc: Set vscode explorer hide settings to bot scenatios workspace
+  ws-save:
+    desc: saves current workspace to specified workspace
+    vars:
+      n: '{{.n}}'  
     cmds:
-      - powershell -Command "Copy-Item -Path .vscode\scenarios_workspace.json -Destination .vscode\settings.json -Force"
-
-  ws-back-save:
-    desc: Saves current settings to backend workspace
-    cmds:
-      - powershell -Command "Copy-Item -Path .vscode\settings.json -Destination .vscode\backend_workspace.json -Force"
-
-  ws-bot-save:
-    desc: Saves current settings to bot workspace
-    cmds:
-      - powershell -Command "Copy-Item -Path .vscode\settings.json -Destination .vscode\scenarios_workspace.json -Force"
+      - powershell -Command "Copy-Item -Path .vscode\settings.json -Destination .vscode\{{.n}}.json"
