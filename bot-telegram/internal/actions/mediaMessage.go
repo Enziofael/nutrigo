@@ -1,4 +1,4 @@
-// ./frontend-bot/internal/actions/mediaMessage.go
+// ./bot-telegram/internal/actions/mediaMessage.go
 
 // TODO:
 // Разнести в отдельные файлы для каждого типа? Потом если что

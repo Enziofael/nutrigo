@@ -3,7 +3,7 @@ package factory
 import (
 	"log"
 
-	"github.com/Enziofael/nutrigo/frontend-bot/internal/templates"
+	"github.com/Enziofael/nutrigo/bot-telegram/internal/templates"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -22,7 +22,7 @@ func SuggestUsageRequest(update tgbotapi.Update) tgbotapi.MessageConfig {
 
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, text)
 	msg.ParseMode = "HTML"
-	
+
 	kb := SuggestUsageRequestKeyboard(update)
 	msg.ReplyMarkup = kb
 

@@ -1,4 +1,4 @@
-// ./frontend-bot/internal/processUpdate/processCommands.go
+// ./bot-telegram/internal/processUpdate/processCommands.go
 
 // ТАК КАК handle фунции маршрутизируют обработку ПЕРСОНАЛИЗИРОВАННО
 // То их задача это:
@@ -12,7 +12,7 @@
 package processUpdate
 
 import (
-	"github.com/Enziofael/nutrigo/frontend-bot/internal/scenarios"
+	"github.com/Enziofael/nutrigo/bot-telegram/internal/scenarios"
 	models "github.com/Enziofael/nutrigo/shared/domain-models/system/user"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )

@@ -14,10 +14,25 @@ import (
 
 // Loads .env file in godotenv
 func init() {
-	envPath := filepath.Join("..", ".env")
-	err := godotenv.Load(envPath)
-	if err != nil {
-		log.Fatalf("Error loading .env file: %s", err)
+
+	maxAttempts := 5
+	envPath := ".env"
+
+	for i := 0; i < maxAttempts; i++ {
+
+		log.Printf("Loading .env attempt №%v", i)
+		err := godotenv.Load(envPath)
+		if err == nil {
+			log.Printf("- Loaded succesfully after attempt #%v with path %v", i, envPath)
+			return
+		} else {
+			log.Printf("- Error loading .env file: %s", err)
+
+			if i == maxAttempts-1 {
+				log.Fatalf("Fatal error loading .env file after %v attempts: %s", i, err)
+			}
+		}
+		envPath = filepath.Join("..", ".env")
 	}
 }
 

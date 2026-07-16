@@ -1,13 +1,13 @@
-// ./frontend-bot/cmd/main.go
+// ./bot-telegram/cmd/main.go
 
 package main
 
 import (
 	"log"
 
-	"github.com/Enziofael/nutrigo/frontend-bot/internal/factory"
-	"github.com/Enziofael/nutrigo/frontend-bot/internal/server"
-	"github.com/Enziofael/nutrigo/frontend-bot/internal/templates"
+	"github.com/Enziofael/nutrigo/bot-telegram/internal/factory"
+	"github.com/Enziofael/nutrigo/bot-telegram/internal/server"
+	"github.com/Enziofael/nutrigo/bot-telegram/internal/templates"
 	cfg "github.com/Enziofael/nutrigo/shared/config"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"

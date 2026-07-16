@@ -7,12 +7,12 @@ tasks:
       - go work sync
       - cd shared && go mod tidy
       - cd backend && go mod tidy
-      - cd frontend-bot && go mod tidy
+      - cd bot-telegram && go mod tidy
 
   bot:
     desc: Build Telegram bot
     cmds:
-      - cd frontend-bot && go build -o ../bin/bot.exe ./cmd/bot
+      - cd bot-telegram && go build -o ../bin/bot.exe ./cmd/bot
 
   backend:
     desc: Build Backend
@@ -27,12 +27,12 @@ tasks:
   run-bot:
     desc: Run Telegram bot
     cmds:
-      - cd frontend-bot && go run ./cmd/main.go
+      - cd bot-telegram && go run ./cmd/main.go
 
-  run-backend:
+  run-back:
     desc: Run Backend
     cmds:
-      - cd backend && go run ./cmd/api/main.go
+      - cd backend && go run ./cmd/main.go
 
   all:
     desc: Build everything
@@ -50,3 +50,24 @@ tasks:
     desc: Run all tests
     cmds:
       - go test ./...
+
+  ws:
+    desc: opens workspace
+    vars:
+      n: '{{.n | default "default"}}'
+    cmds:
+      - powershell -Command "Copy-Item -Path .vscode\{{.n}}.json -Destination .vscode\settings.json -Force"
+
+  ws-create:
+    desc: creates workspace
+    vars:
+      n: '{{.n}}'
+    cmds:
+      - powershell -Command "Copy-Item -Path .vscode\default.json  -Destination .vscode\{{.n}}.json"
+
+  ws-save:
+    desc: saves current workspace to specified workspace
+    vars:
+      n: '{{.n}}'  
+    cmds:
+      - powershell -Command "Copy-Item -Path .vscode\settings.json -Destination .vscode\{{.n}}.json"

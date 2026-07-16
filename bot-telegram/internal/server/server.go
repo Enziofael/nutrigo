@@ -1,4 +1,4 @@
-// ./frontend-bot/internal/server/server.go
+// ./bot-telegram/internal/server/server.go
 
 // Package server runs the Telegram bot's main event loop, polling for updates
 // and delegating messages to specifig handlers.
@@ -15,7 +15,7 @@ package server
 import (
 	"log"
 
-	processUpdate "github.com/Enziofael/nutrigo/frontend-bot/internal/processUpdate"
+	processUpdate "github.com/Enziofael/nutrigo/bot-telegram/internal/processUpdate"
 	//cfg "github.com/Enziofael/nutrigo/shared/config"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -31,7 +31,7 @@ func Start(bot *tgbotapi.BotAPI) {
 
 	// В цикле проходимся по каналу апдейтов, при получении раскидываем их соответствующим хендлерам в горутины, сам цикл при этом идет дальше
 	for update := range updates {
-		
+
 		//Callback update
 		if update.CallbackQuery != nil {
 			go processUpdate.CallbackQueryRouter(bot, update)

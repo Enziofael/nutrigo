@@ -3,3 +3,4 @@ sandbox/
 shared/gflog/
 .env
 .vscode/
+.test
