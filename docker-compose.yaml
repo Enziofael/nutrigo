@@ -3,39 +3,20 @@ services:
     image: postgres:15-alpine
     container_name: nutrigo-postgres
     environment:
-      POSTGRES_USER: nutrigo_user
-      POSTGRES_PASSWORD: nutrigo_password
-      POSTGRES_DB: nutrigo_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
-      - "5432:5432"
+      - "${DB_PORT}:${DB_PORT}"
     volumes:
+      - ./backend/internal/migrations/postgresql/:/docker-entrypoint-initdb.d/
       - postgres_data:/var/lib/postgresql/data
-  
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: nutrigo-backend
-    environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: nutrigo_user
-      DB_PASSWORD: nutrigo_password
-      DB_NAME: nutrigo_db
-    ports:
-      - "8080:8080"
-    depends_on:
-      - postgres
-
-  frontend-bot:
-    build:
-      context: ./frontend-bot
-      dockerfile: Dockerfile
-    container_name: nutrigo-frontend-bot
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nutrigo_user -d nutrigo_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   postgres_data:

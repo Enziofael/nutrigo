@@ -6,10 +6,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Setup(router *gin.Engine) {
-	
+type Server struct {
+	GIN *gin.Engine
+	DB  *sql.DB
 }
 
-func SetupDb(db *sql.DB) {
-	
+func New(gin *gin.Engine, db *sql.DB) *Server {
+	return &Server{
+		GIN: gin,
+		DB:  db,
+	}
 }

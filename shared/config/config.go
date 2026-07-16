@@ -20,26 +20,34 @@ func GetBackendPort() string {
 	return fmt.Sprintf(":%v", env.GetString("BACKEND_PORT"))
 }
 
-func DbHost() string {
+func DBHost() string {
 	return env.GetString("DB_HOST")
 }
 
-func DbPort() string {
+func DBPort() string {
 	return env.GetString("DB_PORT")
 }
 
-func DbUser() string {
+func DBUser() string {
 	return env.GetString("DB_USER")
 }
 
-func DbName() string {
+func DBPwd() string {
+	return env.GetString("DB_PASSWORD")
+}
+
+func DBName() string {
 	return env.GetString("DB_NAME")
 }
 
-func DbSslmode() string {
+func DBSslmode() string {
 	return env.GetString("DB_SSL_MODE")
 }
 
-func DbConString() string {
-	return fmt.Sprintf("host=%v port=%v user=%v dbname=%v sslmode=%v", DbHost(), DbPort(), DbUser(), DbName(), DbSslmode())
+func DBConString() string {
+	return fmt.Sprintf("host=%v port=%v user=%v password=%v dbname=%v sslmode=%v", DBHost(), DBPort(), DBUser(), DBPwd(), DBName(), DBSslmode())
+}
+
+func GetBackendAPIToken() string {
+	return env.GetString("API_TOKEN")
 }
