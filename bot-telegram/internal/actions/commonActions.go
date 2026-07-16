@@ -1,4 +1,4 @@
-// ./frontend-bot/internal/actions/deleteMessage.go
+// ./bot-telegram/internal/actions/deleteMessage.go
 
 package actions
 

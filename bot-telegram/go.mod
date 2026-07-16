@@ -1,4 +1,4 @@
-module github.com/Enziofael/nutrigo/frontend-bot
+module github.com/Enziofael/nutrigo/bot-telegram
 
 go 1.25.6
 

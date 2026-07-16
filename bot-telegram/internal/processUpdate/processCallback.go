@@ -1,9 +1,9 @@
-// ./frontend-bot/internal/processUpdate/processCallback.go
+// ./bot-telegram/internal/processUpdate/processCallback.go
 
 package processUpdate
 
 import (
-	"github.com/Enziofael/nutrigo/frontend-bot/internal/actions"
+	"github.com/Enziofael/nutrigo/bot-telegram/internal/actions"
 	models "github.com/Enziofael/nutrigo/shared/domain-models/system/user"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )

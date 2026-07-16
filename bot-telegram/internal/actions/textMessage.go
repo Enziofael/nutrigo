@@ -1,4 +1,4 @@
-// ./frontend-bot/internal/actions/testMessage.go
+// ./bot-telegram/internal/actions/testMessage.go
 
 package actions
 

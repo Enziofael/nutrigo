@@ -1,10 +1,10 @@
-// ./frontend-bot/internal/scenarios/scenarios.go
+// ./bot-telegram/internal/scenarios/scenarios.go
 
 package scenarios
 
 import (
-	"github.com/Enziofael/nutrigo/frontend-bot/internal/actions"
-	"github.com/Enziofael/nutrigo/frontend-bot/internal/factory"
+	"github.com/Enziofael/nutrigo/bot-telegram/internal/actions"
+	"github.com/Enziofael/nutrigo/bot-telegram/internal/factory"
 	models "github.com/Enziofael/nutrigo/shared/domain-models/system/user"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )

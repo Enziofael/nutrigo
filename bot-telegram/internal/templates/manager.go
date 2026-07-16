@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	engine "github.com/Enziofael/nutrigo/frontend-bot/internal/templates/engines"
+	engine "github.com/Enziofael/nutrigo/bot-telegram/internal/templates/engines"
 )
 
 type Manager struct {
