@@ -1,4 +1,4 @@
-// ./bot-telegram/internal/processUpdate/processCallback.go
+// ./bot-telegram/internal/routers/CallbackQueryRouter.go
 
 package processUpdate
 

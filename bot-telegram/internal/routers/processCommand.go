@@ -1,4 +1,4 @@
-// ./bot-telegram/internal/processUpdate/processCommands.go
+// ./bot-telegram/internal/routers/CommmandRouter.go
 
 // ТАК КАК handle фунции маршрутизируют обработку ПЕРСОНАЛИЗИРОВАННО
 // То их задача это:

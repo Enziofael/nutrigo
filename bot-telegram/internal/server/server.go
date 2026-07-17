@@ -15,7 +15,7 @@ package server
 import (
 	"log"
 
-	processUpdate "github.com/Enziofael/nutrigo/bot-telegram/internal/processUpdate"
+	processUpdate "github.com/Enziofael/nutrigo/bot-telegram/internal/routers"
 	//cfg "github.com/Enziofael/nutrigo/shared/config"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -29,7 +29,8 @@ func Start(bot *tgbotapi.BotAPI) {
 	updates := bot.GetUpdatesChan(u)
 	log.Printf("Ready to receive updates\n\n")
 
-	// В цикле проходимся по каналу апдейтов, при получении раскидываем их соответствующим хендлерам в горутины, сам цикл при этом идет дальше
+	// В цикле проходимся по каналу апдейтов, при получении раскидываем их соответствующим роутерам в горутины, сам цикл при этом идет дальше.
+	// TODO: Для пакета лучше переделать с регистрацией роутеров по типу с передачей функций
 	for update := range updates {
 
 		//Callback update
