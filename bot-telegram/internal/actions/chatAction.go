@@ -7,7 +7,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func StartChatAction(bot *tgbotapi.BotAPI, chatID int64, action string) func() {
+func StartChatAction(bot *tgbotapi.BotAPI, chatID int64, action string) (StopChatAction context.CancelFunc) {
 	ctx, stopChatAction := context.WithCancel(context.Background())
 
 	config := tgbotapi.NewChatAction(chatID, action)
@@ -16,7 +16,6 @@ func StartChatAction(bot *tgbotapi.BotAPI, chatID int64, action string) func() {
 	}
 
 	go func() {
-
 		ticker := time.NewTicker(4 * time.Second)
 		defer ticker.Stop()
 
