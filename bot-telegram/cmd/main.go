@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/factories"
-	app "github.com/Enziofael/nutrigo/bot-telegram/internal/server"
+	tg "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni"
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/templates"
 	cfg "github.com/Enziofael/nutrigo/shared/config"
 )
@@ -21,16 +21,16 @@ func init() {
 
 func main() {
 
-	srv := app.New(cfg.GetBotToken())
+	srv := tg.New(cfg.GetBotToken())
 
-	callbackQuery := srv.Group(app.IsCallbackQuery)
+	callbackQuery := srv.Group(tg.IsCallbackQuery)
 	{
-		callbackQuery.Use(app.CallbackQuery("user_usage_request"), app.HandlerFuncStub)
+		callbackQuery.Use(tg.CallbackQuery("user_usage_request"), tg.HandlerFuncStub)
 	}
-	command := srv.Group(app.IsCommand)
+	command := srv.Group(tg.IsCommand)
 	{
-		command.Use(app.Command("start"), app.HandlerFuncStub)
-		command.Use(app.Command("admin"), app.HandlerFuncStub)
+		command.Use(tg.Command("start"), tg.HandlerFuncStub)
+		command.Use(tg.Command("admin"), tg.HandlerFuncStub)
 	}
 
 	srv.Start()

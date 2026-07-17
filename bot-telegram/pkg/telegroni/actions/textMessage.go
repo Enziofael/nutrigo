@@ -1,6 +1,6 @@
 // ./bot-telegram/internal/actions/testMessage.go
 
-package actions
+package telegroni
 
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"

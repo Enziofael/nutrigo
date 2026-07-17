@@ -4,20 +4,26 @@
 //
 // Example:
 //
+//	import (
+//		tgbot "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni"
+//		tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+//	)
+//
 //	func main() {
 //		// Creating a server
-//		srv := server.New("your_bot_private_token")
+//		srv := tgbot.New("your_bot_private_token")
 //
 //		// Routes registration
-//		srv.Use(server.Command("start"), handleStart)
+//		srv.Use(tgbot.Command("start"), handleStart)
 //
 //		// Starting server's loop
 //		srv.Start()
 //	}
+//
 //	func handleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 //		// Do something
 //	}
-package server
+package telegroni
 
 import (
 	"log"

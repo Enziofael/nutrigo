@@ -3,7 +3,7 @@
 // TODO:
 // Разнести в отдельные файлы для каждого типа? Потом если что
 
-package actions
+package telegroni
 
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
