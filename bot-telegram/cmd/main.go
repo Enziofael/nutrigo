@@ -5,12 +5,10 @@ package main
 import (
 	"log"
 
-	"github.com/Enziofael/nutrigo/bot-telegram/internal/factory"
-	"github.com/Enziofael/nutrigo/bot-telegram/internal/server"
+	"github.com/Enziofael/nutrigo/bot-telegram/internal/factories"
+	tg "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni"
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/templates"
 	cfg "github.com/Enziofael/nutrigo/shared/config"
-
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 func init() {
@@ -18,26 +16,22 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	factory.SetTemplateManager(m)
+	factories.SetTemplateManager(m)
 }
 
 func main() {
-	bot, err := tgbotapi.NewBotAPI(cfg.GetBotToken())
-	if err != nil {
-		log.Fatalf("Panic: bot creation failed. Invalid token? Error: \"%s\"", err)
+
+	srv := tg.New(cfg.GetBotToken())
+	
+	callbackQuery := srv.Group(tg.IsCallbackQuery)
+	{
+		callbackQuery.Use(tg.CallbackQuery("user_usage_request"), tg.HandlerFuncStub)
+	}
+	command := srv.Group(tg.IsCommand)
+	{
+		command.Use(tg.Command("start"), tg.HandlerFuncStub)
+		command.Use(tg.Command("admin"), tg.HandlerFuncStub)
 	}
 
-	//------
-	bot.Debug = true
-	//------
-
-	log.Printf(`Bot init successful.
-	Authorized on account @%s
-	ID: %d
-	CanJoinGroups: %t
-	CanReadAllGroupMessages: %t
-	SupportsInlineQueries: %t`,
-		bot.Self.UserName, bot.Self.ID, bot.Self.CanJoinGroups, bot.Self.CanReadAllGroupMessages, bot.Self.SupportsInlineQueries)
-
-	server.Start(bot)
+	srv.Start()
 }

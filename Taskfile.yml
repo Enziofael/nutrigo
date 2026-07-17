@@ -71,3 +71,23 @@ tasks:
       n: '{{.n}}'  
     cmds:
       - powershell -Command "Copy-Item -Path .vscode\settings.json -Destination .vscode\{{.n}}.json"
+
+  ws-delete:
+    desc: "deletes specified workspace file"
+    vars:
+      n: '{{.n}}'
+    cmds:
+      - powershell -Command "if ('{{.n}}' -ne 'default' -and '{{.n}}' -ne 'settings') { Remove-Item '.vscode\{{.n}}.json' -ErrorAction SilentlyContinue }"
+  
+  ws-list:
+    desc: prints all saves workspaces
+    cmds:
+      - powershell -command "Get-ChildItem -Path .vscode | Format-Table Name, Length, LastWriteTime -AutoSize"
+
+  ws-rename:
+    desc: "renames workspace file"
+    vars:
+      old: '{{.s}}'
+      new: '{{.d}}'
+    cmds:
+            - powershell -Command "if ('{{.s}}' -ne 'default' -and '{{.s}}' -ne 'settings') { Move-Item '.vscode\{{.s}}.json' '.vscode\{{.d}}.json' -ErrorAction SilentlyContinue -Force }"
