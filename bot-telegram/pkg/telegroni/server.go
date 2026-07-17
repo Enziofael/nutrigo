@@ -26,6 +26,7 @@
 package telegroni
 
 import (
+	"fmt"
 	"log"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -150,7 +151,7 @@ func New(bot_token string) *Server {
 	}
 
 	//------
-	bot.Debug = true
+	//bot.Debug = true
 	//------
 	log.Printf(`Bot init successful.
 	Authorized on account @%s
@@ -207,42 +208,89 @@ func (s *Server) Start() error {
 		}
 
 		if !matched {
-			log.Printf("Warning: unhandled update (type: %T)", update)
+			log.Printf("Warning: unhandled update: %s", formatUpdate(update))
 		}
 	}
 	return nil
 }
 
-// PREMADE
-
-func IsCommand(bot *tgbotapi.BotAPI, update tgbotapi.Update) bool {
-	return update.Message != nil && update.Message.IsCommand()
-}
-
-func Command(command string) MatchFunc {
-	return func(bot *tgbotapi.BotAPI, update tgbotapi.Update) bool {
-		return IsCommand(bot, update) &&
-			update.Message.Command() == command
+func formatUpdate(u tgbotapi.Update) string {
+	if u.Message != nil {
+		return fmt.Sprintf("Message(id=%d, chat=%d, from=%d, text=%q)",
+			u.Message.MessageID,
+			u.Message.Chat.ID,
+			u.Message.From.ID,
+			u.Message.Text,
+		)
 	}
-}
-
-func IsCallbackQuery(bot *tgbotapi.BotAPI, update tgbotapi.Update) bool {
-	return update.CallbackQuery != nil
-}
-
-func CallbackQuery(data string) MatchFunc {
-	return func(bot *tgbotapi.BotAPI, update tgbotapi.Update) bool {
-		return IsCallbackQuery(bot, update) &&
-			update.CallbackQuery.Data == data
+	if u.CallbackQuery != nil {
+		return fmt.Sprintf("CallbackQuery(id=%s, from=%d, data=%q, message_id=%d)",
+			u.CallbackQuery.ID,
+			u.CallbackQuery.From.ID,
+			u.CallbackQuery.Data,
+			u.CallbackQuery.Message.MessageID,
+		)
 	}
-}
-
-func IsAny(bot *tgbotapi.BotAPI, update tgbotapi.Update) bool {
-	return true
-}
-
-func Any() MatchFunc {
-	return func(bot *tgbotapi.BotAPI, update tgbotapi.Update) bool { return IsAny(bot, update) }
+	if u.EditedMessage != nil {
+		return fmt.Sprintf("EditedMessage(id=%d, chat=%d, text=%q)",
+			u.EditedMessage.MessageID,
+			u.EditedMessage.Chat.ID,
+			u.EditedMessage.Text,
+		)
+	}
+	if u.ChannelPost != nil {
+		return fmt.Sprintf("ChannelPost(id=%d, chat=%d, text=%q)",
+			u.ChannelPost.MessageID,
+			u.ChannelPost.Chat.ID,
+			u.ChannelPost.Text,
+		)
+	}
+	if u.EditedChannelPost != nil {
+		return fmt.Sprintf("EditedChannelPost(id=%d, chat=%d, text=%q)",
+			u.EditedChannelPost.MessageID,
+			u.EditedChannelPost.Chat.ID,
+			u.EditedChannelPost.Text,
+		)
+	}
+	if u.InlineQuery != nil {
+		return fmt.Sprintf("InlineQuery(id=%s, from=%d, query=%q)",
+			u.InlineQuery.ID,
+			u.InlineQuery.From.ID,
+			u.InlineQuery.Query,
+		)
+	}
+	if u.ChosenInlineResult != nil {
+		return fmt.Sprintf("ChosenInlineResult(result_id=%s, from=%d, query=%q)",
+			u.ChosenInlineResult.ResultID,
+			u.ChosenInlineResult.From.ID,
+			u.ChosenInlineResult.Query,
+		)
+	}
+	if u.ShippingQuery != nil {
+		return fmt.Sprintf("ShippingQuery(id=%s, from=%d)",
+			u.ShippingQuery.ID,
+			u.ShippingQuery.From.ID,
+		)
+	}
+	if u.PreCheckoutQuery != nil {
+		return fmt.Sprintf("PreCheckoutQuery(id=%s, from=%d)",
+			u.PreCheckoutQuery.ID,
+			u.PreCheckoutQuery.From.ID,
+		)
+	}
+	if u.Poll != nil {
+		return fmt.Sprintf("Poll(id=%s, question=%q)",
+			u.Poll.ID,
+			u.Poll.Question,
+		)
+	}
+	if u.PollAnswer != nil {
+		return fmt.Sprintf("PollAnswer(poll_id=%s, user=%d)",
+			u.PollAnswer.PollID,
+			u.PollAnswer.User.ID,
+		)
+	}
+	return fmt.Sprintf("unknown update (update_id=%d)", u.UpdateID)
 }
 
 func HandlerFuncStub(bot *tgbotapi.BotAPI, update tgbotapi.Update) {

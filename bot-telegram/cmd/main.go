@@ -22,7 +22,7 @@ func init() {
 func main() {
 
 	srv := tg.New(cfg.GetBotToken())
-
+	
 	callbackQuery := srv.Group(tg.IsCallbackQuery)
 	{
 		callbackQuery.Use(tg.CallbackQuery("user_usage_request"), tg.HandlerFuncStub)
