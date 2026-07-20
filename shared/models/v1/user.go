@@ -3,8 +3,8 @@ package v1
 import "time"
 
 type User struct {
-	ID             uint      `json:"id"`
-	TgID           uint      `json:"tgID"`
+	ID             int64     `json:"id"`
+	TgID           int64     `json:"tgID"`
 	TgTag          string    `json:"tgTag"`
 	CreatedAt      time.Time `json:"createdAt"`
 	LastMessagedAt time.Time `json:"lastMessagedAt"`
@@ -12,7 +12,7 @@ type User struct {
 }
 
 type UserCreateRequest struct {
-	TgID  uint   `json:"tgId" binding:"required"`
+	TgID  int64  `json:"tgId" binding:"required"`
 	TgTag string `json:"tgTag" binding:"required"`
 }
 

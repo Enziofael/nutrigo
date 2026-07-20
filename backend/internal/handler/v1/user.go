@@ -26,13 +26,13 @@ func (h *UserHandler) GetByTgID(c *gin.Context) {
 		return
 	}
 
-	tgID, err := strconv.ParseUint(tgIDStr, 10, 64)
+	tgID, err := strconv.ParseInt(tgIDStr, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tg_id"})
 		return
 	}
 
-	user, err := h.service.GetByTgID(c.Request.Context(), uint(tgID))
+	user, err := h.service.GetByTgID(c.Request.Context(), int64(tgID))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

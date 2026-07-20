@@ -8,17 +8,21 @@ import (
 	env "github.com/Enziofael/nutrigo/shared/enviroment"
 )
 
-func GetBotToken() string {
-	return env.GetString("TELEGRAM_BOT_API_TOKEN")
-}
-
 func GetDebugLogging() bool {
 	return env.GetBool("DEBUG_LOGGING")
 }
 
-func GetBackendPort() string {
-	return fmt.Sprintf(":%v", env.GetString("BACKEND_PORT"))
+// ====================================================
+// BOT
+// ====================================================
+
+func GetBotToken() string {
+	return env.GetString("TELEGRAM_BOT_API_TOKEN")
 }
+
+// ====================================================
+// DB
+// ====================================================
 
 func DBHost() string {
 	return env.GetString("DB_HOST")
@@ -48,6 +52,30 @@ func DBConString() string {
 	return fmt.Sprintf("host=%v port=%v user=%v password=%v dbname=%v sslmode=%v", DBHost(), DBPort(), DBUser(), DBPwd(), DBName(), DBSslmode())
 }
 
+// ====================================================
+// Backend
+// ====================================================
+
 func GetBackendAPIToken() string {
 	return env.GetString("API_TOKEN")
+}
+
+func GetBackendHost() string {
+	return env.GetString("BACKEND_HOST")
+}
+
+func GetBackendPort() string {
+	return env.GetString("BACKEND_PORT")
+}
+
+func GetBackendProtocolPrefix() string {
+	return env.GetString("BACKEND_PROTOCOL_PREFIX")
+}
+
+func GetBackendURL() string {
+	return fmt.Sprintf("%v:%v", GetBackendHost(), GetBackendPort())
+}
+
+func GetBackendFullURL() string {
+	return fmt.Sprintf("%v://%v:%v", GetBackendProtocolPrefix(), GetBackendHost(), GetBackendPort())
 }

@@ -19,3 +19,10 @@ func (e *BotError) Error() string {
 func (e *BotError) Unwrap() error {
 	return e.Err
 }
+
+func NewBotError(s string, inner *BotError) *BotError {
+	return &BotError{
+		Message: s,
+		Err:     inner,
+	}
+}

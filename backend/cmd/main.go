@@ -27,13 +27,13 @@ func main() {
 	}
 
 	r := gin.Default()
-	
+
 	s := server.New(r, db)
 
 	middleware.Register(s)
 	routes.Register(s)
 
-	err = r.Run(cfg.GetBackendPort())
+	err = r.Run(cfg.GetBackendURL())
 	if err != nil {
 		log.Fatalf("Fatal error at main.go: %v", err)
 	}

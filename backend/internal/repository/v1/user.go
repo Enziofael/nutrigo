@@ -10,7 +10,7 @@ import (
 )
 
 type UserRepository interface {
-	GetByTgId(ctx context.Context, tgID uint) (*models.User, error)
+	GetByTgId(ctx context.Context, tgID int64) (*models.User, error)
 	Create(ctx context.Context, req models.UserCreateRequest) (*models.User, error)
 }
 
@@ -22,7 +22,7 @@ func NewUserPostgresRepository(db *sql.DB) *UserPostgresRepository {
 	return &UserPostgresRepository{db: db}
 }
 
-func (r *UserPostgresRepository) GetByTgId(ctx context.Context, tgID uint) (*models.User, error) {
+func (r *UserPostgresRepository) GetByTgId(ctx context.Context, tgID int64) (*models.User, error) {
 	var u models.User
 	err := r.db.QueryRowContext(ctx, `
         SELECT id, tg_id, tg_tag, created_at, last_messaged_at, status

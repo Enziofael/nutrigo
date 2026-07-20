@@ -20,3 +20,17 @@ func (e *APIError) Error() string {
 func (e *APIError) Unwrap() error {
 	return e.Err
 }
+
+func IsNotFound(err error) bool {
+	if apiErr, ok := err.(*APIError); ok {
+		return apiErr.StatusCode == 404
+	}
+	return false
+}
+
+func IsInternalServerError(err error) bool {
+	if apiErr, ok := err.(*APIError); ok {
+		return apiErr.StatusCode >= 500
+	}
+	return false
+}
