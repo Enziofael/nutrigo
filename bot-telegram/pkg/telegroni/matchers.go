@@ -2,7 +2,6 @@ package telegroni
 
 import (
 	"context"
-	"log"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -119,13 +118,11 @@ func ChatJoinRequest() MatchFunc {
 
 func IsCommand(ctx context.Context, update tgbotapi.Update) bool {
 	ok := update.Message != nil && update.Message.IsCommand()
-	log.Printf("IsCommand: message=%v, ok=%v", update.Message != nil, ok)
 	return ok
 }
 
 func Command(command string) MatchFunc {
 	return func(ctx context.Context, update tgbotapi.Update) bool {
-		log.Printf("Command: expected=%v, actual=%v", command, update.Message.Command())
 		return IsCommand(ctx, update) &&
 			update.Message.Command() == command
 	}

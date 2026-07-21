@@ -40,8 +40,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
-	"github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni/logger"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -130,7 +130,7 @@ func (h *Handler) Name() string {
 // Returns true if the condition was satisfied and routing was successful (handler may still be running).
 func (h *Handler) handle(ctx context.Context, u tgbotapi.Update) (matched bool, status string, err *BotError) {
 	if !h.matchFunc(ctx, u) {
-		return false, logger.StatusWarn, NewBotError(fmt.Sprintf("[Handler] %s unmatched", h.name), nil)
+		return false, StatusWarn, NewBotError(fmt.Sprintf("[Handler] %s unmatched", h.name), nil)
 	}
 	status, err = h.handlerFunc(ctx, u)
 	return true, status, err
@@ -207,19 +207,20 @@ func (g *HandlerGroup) Group(mf MatchFunc, name string) *HandlerGroup {
 // Returns true if any child route handled the update.
 func (g *HandlerGroup) handle(ctx context.Context, u tgbotapi.Update) (matched bool, status string, err *BotError) {
 	if !g.matchFunc(ctx, u) {
-		return false, logger.StatusWarn, NewBotError(fmt.Sprintf("[Group] %s: unmatched", g.name), nil)
+		return false, StatusWarn, NewBotError(fmt.Sprintf("[Group] %s: unmatched", g.name), nil)
 	}
 
 	for _, route := range g.routes {
 		var innerErr *BotError
-		if matched, status, innerErr = route.handle(ctx, u); matched {
-			if innerErr != nil {
-				err = NewBotError("", innerErr)
-			}
-			return matched, status, err
+		matched, status, innerErr = route.handle(ctx, u)
+		if innerErr != nil {
+			err = NewBotError("", innerErr)
+		}
+		if matched {
+			return true, status, err
 		}
 	}
-	return false, logger.StatusWarn, NewBotError(fmt.Sprintf("[Group] %s: no matched handler", g.name), err)
+	return false, StatusWarn, NewBotError(fmt.Sprintf("[Group] %s: no matched handler", g.name), err)
 }
 
 // ============================================
@@ -294,10 +295,16 @@ func (s *Server) Group(mf MatchFunc, name string) *HandlerGroup {
 
 // handle processes a single update through the routing chain.
 func (s *Server) handle(ctx context.Context, u tgbotapi.Update) {
+	var (
+		matched bool
+	)
 	for _, route := range s.routes {
-		if matched, _, _ := route.handle(ctx, u); !matched {
-			logger.LogGlobalError(u)
+		if matched, _, _ = route.handle(ctx, u); matched {
+			return
 		}
+	}
+	if !matched {
+		LogGlobalError(ctx, u)
 	}
 }
 
@@ -309,9 +316,10 @@ func (s *Server) Start() *BotError {
 	u.Timeout = 30
 
 	updates := s.Context.Value("bot").(*tgbotapi.BotAPI).GetUpdatesChan(u)
-
+	
 	for update := range updates {
-		go s.handle(s.Context, update)
+		ctx := context.WithValue(s.Context, "timestamp_recieved", time.Now())
+		go s.handle(ctx, update)
 	}
 
 	return nil
@@ -322,6 +330,7 @@ func (s *Server) Start() *BotError {
 // ============================================
 
 // HandlerFuncStub is a stub handler for testing.
-func HandlerFuncStub(ctx context.Context, update tgbotapi.Update) {
-	log.Printf("[Stub] Handler called for update: %s", update.UpdateID)
+func HandlerFuncStub(ctx context.Context, update tgbotapi.Update) (status string, err *BotError) {
+	log.Printf("[Stub] Handler called for update: %v", update.UpdateID)
+	return StatusOK, nil
 }
