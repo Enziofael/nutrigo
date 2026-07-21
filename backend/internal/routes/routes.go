@@ -10,6 +10,7 @@ func Register(server *server.Server) {
 
 	v1 := router.Group("/v1")
 	{
+		apiv1.RegisterCommonRoutes(v1, server)
 		apiv1.RegisterUserRoutes(v1, server)
 		// apiv1.Register...Routes(v1, server)
 		// ...

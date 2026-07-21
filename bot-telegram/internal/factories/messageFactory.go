@@ -2,6 +2,7 @@ package factories
 
 import (
 	"log"
+	"strconv"
 
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/templates"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -31,6 +32,25 @@ func SuggestUsageRequest(update tgbotapi.Update) tgbotapi.MessageConfig {
 
 func WaitToConfirm(update tgbotapi.Update) tgbotapi.MessageConfig {
 	text, err := tmplManager.RenderHTML("WaitToConfirm", nil)
+	if err != nil {
+		log.Panicf("Render error: %v", err)
+		text = err.Error()
+	}
+
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, text)
+	msg.ParseMode = "HTML"
+
+	return msg
+}
+
+func GetMe(update tgbotapi.Update, status string) tgbotapi.MessageConfig {
+	text, err := tmplManager.RenderHTML("user", map[string]string{
+		"FirstName": update.Message.From.FirstName,
+		"LastName":  update.Message.From.LastName,
+		"Tag":       update.Message.From.UserName,
+		"TgId":      strconv.FormatInt(update.Message.From.ID, 10),
+		"Status":    status,
+	})
 	if err != nil {
 		log.Panicf("Render error: %v", err)
 		text = err.Error()

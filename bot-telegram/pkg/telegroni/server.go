@@ -1,4 +1,4 @@
-// Package server provides a flexible routing system for Telegram bots.
+// Package telegroni provides a flexible routing system for Telegram bots.
 // It allows registering routes with match conditions and handlers,
 // grouping routes, and nesting groups for complex routing logic.
 //
@@ -11,23 +11,36 @@
 //
 //	func main() {
 //		// Creating a server
-//		srv := tgbot.New("your_bot_private_token")
+//		srv := tgbot.New(tgbot.ServerConfig{
+//			BotConfig: tgbot.BotConfig{APIToken: "your_bot_private_token"},
+//		})
+//
+//		// Global middleware
+//		srv.Apply(tgbot.NewMiddleware(LoggerMiddleware, "logger"))
 //
 //		// Routes registration
-//		srv.Use(tgbot.Command("start"), handleStart)
+//		srv.Use(tgbot.Command("start"), handleStart, "start")
 //
 //		// Starting server's loop
 //		srv.Start()
 //	}
 //
-//	func handleStart(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
+//	func handleStart(ctx context.Context, update tgbotapi.Update) {
 //		// Do something
+//	}
+//
+//	func LoggerMiddleware(ctx context.Context, update tgbotapi.Update, next tgbot.HandlerFunc) {
+//		log.Println("Before")
+//		next(ctx, update)
+//		log.Println("After")
 //	}
 package telegroni
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -41,16 +54,51 @@ import (
 type Route interface {
 	// handle processes the update and returns true if the route matched and handled it.
 	// If false, the server continues to the next route in the chain.
-	handle(b *tgbotapi.BotAPI, u tgbotapi.Update) (matched bool)
+	handle(ctx context.Context, u tgbotapi.Update) (matched bool, status string, err *BotError)
+	// Name returns the name of the route for logging and debugging.
+	Name() string
 }
 
 // MatchFunc determines whether a route or group should handle a given update.
-// It receives the bot instance and the update to allow complex matching logic.
-type MatchFunc func(bot *tgbotapi.BotAPI, update tgbotapi.Update) bool
+type MatchFunc func(ctx context.Context, update tgbotapi.Update) bool
 
 // HandlerFunc is the function that processes a matched update.
-// It runs asynchronously in a goroutine to avoid blocking the main event loop.
-type HandlerFunc func(bot *tgbotapi.BotAPI, update tgbotapi.Update)
+type HandlerFunc func(ctx context.Context, update tgbotapi.Update) (status string, err *BotError)
+
+// MiddlewareFunc is a function that wraps a handler.
+// It can execute code before and after the handler,
+// and can choose to call the next handler or not.
+type MiddlewareFunc func(ctx context.Context, update tgbotapi.Update, next HandlerFunc) (status string, err *BotError)
+
+// ============================================
+// Middleware
+// ============================================
+
+// Middleware represents a middleware with a name for logging.
+type Middleware struct {
+	middlewareFunc MiddlewareFunc
+	name           string
+}
+
+// NewMiddleware creates a new middleware.
+func NewMiddleware(mwf MiddlewareFunc, name string) Middleware {
+	return Middleware{
+		middlewareFunc: mwf,
+		name:           name,
+	}
+}
+
+// apply wraps a handler with the middleware.
+func (m Middleware) apply(handler HandlerFunc) HandlerFunc {
+	return func(ctx context.Context, update tgbotapi.Update) (status string, err *BotError) {
+		return m.middlewareFunc(ctx, update, handler)
+	}
+}
+
+// Name returns the middleware name.
+func (m Middleware) Name() string {
+	return m.name
+}
 
 // ============================================
 // Handler
@@ -61,21 +109,31 @@ type HandlerFunc func(bot *tgbotapi.BotAPI, update tgbotapi.Update)
 type Handler struct {
 	handlerFunc HandlerFunc
 	matchFunc   MatchFunc
+	name        string
 }
 
-// makeHandler creates a new Handler with the given match and handler functions.
-func makeHandler(hf HandlerFunc, mf MatchFunc) Handler {
-	return Handler{handlerFunc: hf, matchFunc: mf}
+// NewHandler creates a new Handler with the given match and handler functions.
+func NewHandler(hf HandlerFunc, mf MatchFunc, name string) *Handler {
+	return &Handler{
+		handlerFunc: hf,
+		matchFunc:   mf,
+		name:        name,
+	}
+}
+
+// Name returns the handler name.
+func (h *Handler) Name() string {
+	return h.name
 }
 
 // handle checks the match condition and executes the handler if it matches.
-// Returns true if the condition was satisfied and rouing was successful (handler may still be running).
-func (r Handler) handle(b *tgbotapi.BotAPI, u tgbotapi.Update) (matched bool) {
-	if !r.matchFunc(b, u) {
-		return false
+// Returns true if the condition was satisfied and routing was successful (handler may still be running).
+func (h *Handler) handle(ctx context.Context, u tgbotapi.Update) (matched bool, status string, err *BotError) {
+	if !h.matchFunc(ctx, u) {
+		return false, StatusWarn, NewBotError(fmt.Sprintf("[Handler] %s unmatched", h.name), nil)
 	}
-	go r.handlerFunc(b, u)
-	return true
+	status, err = h.handlerFunc(ctx, u)
+	return true, status, err
 }
 
 // ============================================
@@ -89,45 +147,80 @@ func (r Handler) handle(b *tgbotapi.BotAPI, u tgbotapi.Update) (matched bool) {
 //
 // HandlerGroups can be nested to create hierarchical routing structures.
 type HandlerGroup struct {
-	matchFunc MatchFunc
-	routes    []Route
+	matchFunc   MatchFunc
+	routes      []Route
+	middlewares []Middleware
+	name        string
 }
 
-// makeHandlerGroup creates a new HandlerGroup with the given match condition.
-func makeHandlerGroup(mf MatchFunc) HandlerGroup {
-	return HandlerGroup{matchFunc: mf, routes: make([]Route, 0)}
+// NewHandlerGroup creates a new HandlerGroup with the given match condition.
+func NewHandlerGroup(mf MatchFunc, name string) *HandlerGroup {
+	return &HandlerGroup{
+		matchFunc:   mf,
+		routes:      make([]Route, 0),
+		middlewares: make([]Middleware, 0),
+		name:        name,
+	}
+}
+
+// Name returns the group name.
+func (g *HandlerGroup) Name() string {
+	return g.name
+}
+
+// Apply adds a middleware to the group.
+func (g *HandlerGroup) Apply(mw Middleware) {
+	g.middlewares = append(g.middlewares, mw)
+}
+
+// Use adds a new handler to the group's routing chain.
+// Routes are processed in the order they are registered.
+func (g *HandlerGroup) Use(mf MatchFunc, hf HandlerFunc, name string) {
+	//log.Printf("[Group] Adding handler: %s -> %s", g.name, name)
+
+	wrapped := hf
+	for i := len(g.middlewares) - 1; i >= 0; i-- {
+		wrapped = g.middlewares[i].apply(wrapped)
+	}
+
+	g.routes = append(g.routes, NewHandler(wrapped, mf, name))
+}
+
+// Group creates a new nested group and returns a pointer to it.
+// The pointer allows modification of the nested group after creation.
+// Routes are processed in the order they are registered.
+func (g *HandlerGroup) Group(mf MatchFunc, name string) *HandlerGroup {
+	//log.Printf("[Group] Adding nested group: %s -> %s", g.name, name)
+
+	newGroup := NewHandlerGroup(mf, name)
+
+	// Copy parent's middlewares to the new group
+	newGroup.middlewares = make([]Middleware, len(g.middlewares))
+	copy(newGroup.middlewares, g.middlewares)
+
+	g.routes = append(g.routes, newGroup)
+	return newGroup
 }
 
 // handle checks the group's condition and, if true, processes child routes
 // sequentially. Stops at the first child route that handles the update.
 // Returns true if any child route handled the update.
-func (g HandlerGroup) handle(b *tgbotapi.BotAPI, u tgbotapi.Update) (matched bool) {
-	if !g.matchFunc(b, u) {
-		return false
+func (g *HandlerGroup) handle(ctx context.Context, u tgbotapi.Update) (matched bool, status string, err *BotError) {
+	if !g.matchFunc(ctx, u) {
+		return false, StatusWarn, NewBotError(fmt.Sprintf("[Group] %s: unmatched", g.name), nil)
 	}
+
 	for _, route := range g.routes {
-		if route.handle(b, u) {
-			return true
+		var innerErr *BotError
+		matched, status, innerErr = route.handle(ctx, u)
+		if innerErr != nil {
+			err = NewBotError("", innerErr)
+		}
+		if matched {
+			return true, status, err
 		}
 	}
-	return false
-}
-
-// Use adds a new handler to the group's routing chain.
-//
-// Routes are processed in the order they are registered.
-func (g *HandlerGroup) Use(mf MatchFunc, hf HandlerFunc) {
-	g.routes = append(g.routes, makeHandler(hf, mf))
-}
-
-// Group creates a new nested group and returns a pointer to it.
-// The pointer allows modification of the nested group after creation.
-//
-// Routes are processed in the order they are registered.
-func (g *HandlerGroup) Group(mf MatchFunc) *HandlerGroup {
-	newGroup := makeHandlerGroup(mf)
-	g.routes = append(g.routes, newGroup)
-	return &newGroup
+	return false, StatusWarn, NewBotError(fmt.Sprintf("[Group] %s: no matched handler", g.name), err)
 }
 
 // ============================================
@@ -138,160 +231,106 @@ func (g *HandlerGroup) Group(mf MatchFunc) *HandlerGroup {
 // It holds the routing chain and the bot instance, orchestrating the
 // entire update handling process.
 type Server struct {
-	routes []Route
-	bot    *tgbotapi.BotAPI
+	Context     context.Context
+	routes      []Route
+	middlewares []Middleware
 }
 
-// New creates a new Server instance with the given bot.
-// The server starts with an empty routing chain.
-func New(bot_token string) *Server {
-	bot, err := tgbotapi.NewBotAPI(bot_token)
+// ServerConfig configures the server.
+type ServerConfig struct {
+	BotConfig BotConfig
+}
+
+// BotConfig configures the bot.
+type BotConfig struct {
+	APIToken string
+}
+
+// New creates a new Server instance with the given config.
+func New(cfg ServerConfig) (*Server, *BotError) {
+	bot, err := tgbotapi.NewBotAPI(cfg.BotConfig.APIToken)
 	if err != nil {
-		log.Fatalf("Panic: bot creation failed. Error: \"%s\"", err)
+		return nil, NewBotError("Bot Creation failed", NewBotError(err.Error(), nil))
 	}
 
-	//------
-	//bot.Debug = true
-	//------
-	log.Printf(`Bot init successful.
-	Authorized on account @%s
-	ID: %d
-	CanJoinGroups: %t
-	CanReadAllGroupMessages: %t
-	SupportsInlineQueries: %t`,
-		bot.Self.UserName, bot.Self.ID, bot.Self.CanJoinGroups, bot.Self.CanReadAllGroupMessages, bot.Self.SupportsInlineQueries)
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, "bot", bot)
 
-	return &Server{bot: bot, routes: make([]Route, 0)}
+	return &Server{
+		Context:     ctx,
+		routes:      make([]Route, 0),
+		middlewares: make([]Middleware, 0),
+	}, nil
+}
+
+// Apply adds a global middleware to the server.
+func (s *Server) Apply(mw Middleware) {
+	s.middlewares = append(s.middlewares, mw)
 }
 
 // Use adds a new handler to the server's routing chain.
-//
 // Routes are processed in the order they are registered.
-func (s *Server) Use(mf MatchFunc, hf HandlerFunc) error {
-	s.routes = append(s.routes, makeHandler(hf, mf))
+func (s *Server) Use(mf MatchFunc, hf HandlerFunc, name string) *BotError {
+	wrapped := hf
+	for i := len(s.middlewares) - 1; i >= 0; i-- {
+		wrapped = s.middlewares[i].apply(wrapped)
+	}
+
+	s.routes = append(s.routes, NewHandler(wrapped, mf, name))
 	return nil
 }
 
 // Group creates a new group and returns a pointer to it.
 // The pointer allows modification of the group after creation.
-//
 // Routes are processed in the order they are registered.
-func (s *Server) Group(mf MatchFunc) *HandlerGroup {
-	newGroup := makeHandlerGroup(mf)
+func (s *Server) Group(mf MatchFunc, name string) *HandlerGroup {
+	newGroup := NewHandlerGroup(mf, name)
+
+	newGroup.middlewares = make([]Middleware, len(s.middlewares))
+	copy(newGroup.middlewares, s.middlewares)
+
 	s.routes = append(s.routes, newGroup)
-	return &newGroup
+	return newGroup
+}
+
+// handle processes a single update through the routing chain.
+func (s *Server) handle(ctx context.Context, u tgbotapi.Update) {
+	var (
+		matched bool
+	)
+	for _, route := range s.routes {
+		if matched, _, _ = route.handle(ctx, u); matched {
+			return
+		}
+	}
+	if !matched {
+		LogGlobalError(ctx, u)
+	}
 }
 
 // Start begins the main event loop, polling Telegram for updates.
 // It processes each update through the routing chain sequentially.
 // The function blocks until the bot's update channel is closed.
-//
-// Each update is processed asynchronously after it was routed
-// and handeled to the FIRST matched handler,
-// which runs in its own goroutine to prevent blocking the main loop.
-func (s *Server) Start() error {
+func (s *Server) Start() *BotError {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 30
 
-	updates := s.bot.GetUpdatesChan(u)
-	log.Printf("Bot is running. Ready to receive updates\n\n")
-
-	// В цикле проходимся по каналу апдейтов, при получении раскидываем их соответствующим роутерам в горутины, сам цикл при этом идет дальше.
-	// TODO: Для пакета лучше переделать с регистрацией роутеров по типу с передачей функций
+	updates := s.Context.Value("bot").(*tgbotapi.BotAPI).GetUpdatesChan(u)
+	
 	for update := range updates {
-		matched := false
-		for _, r := range s.routes {
-			if r.handle(s.bot, update) {
-				matched = true
-				break // Stop processing after first match
-			}
-		}
-
-		if !matched {
-			log.Printf("Warning: unhandled update: %s", formatUpdate(update))
-		}
+		ctx := context.WithValue(s.Context, "timestamp_recieved", time.Now())
+		go s.handle(ctx, update)
 	}
+
 	return nil
 }
 
-func formatUpdate(u tgbotapi.Update) string {
-	if u.Message != nil {
-		return fmt.Sprintf("Message(id=%d, chat=%d, from=%d, text=%q)",
-			u.Message.MessageID,
-			u.Message.Chat.ID,
-			u.Message.From.ID,
-			u.Message.Text,
-		)
-	}
-	if u.CallbackQuery != nil {
-		return fmt.Sprintf("CallbackQuery(id=%s, from=%d, data=%q, message_id=%d)",
-			u.CallbackQuery.ID,
-			u.CallbackQuery.From.ID,
-			u.CallbackQuery.Data,
-			u.CallbackQuery.Message.MessageID,
-		)
-	}
-	if u.EditedMessage != nil {
-		return fmt.Sprintf("EditedMessage(id=%d, chat=%d, text=%q)",
-			u.EditedMessage.MessageID,
-			u.EditedMessage.Chat.ID,
-			u.EditedMessage.Text,
-		)
-	}
-	if u.ChannelPost != nil {
-		return fmt.Sprintf("ChannelPost(id=%d, chat=%d, text=%q)",
-			u.ChannelPost.MessageID,
-			u.ChannelPost.Chat.ID,
-			u.ChannelPost.Text,
-		)
-	}
-	if u.EditedChannelPost != nil {
-		return fmt.Sprintf("EditedChannelPost(id=%d, chat=%d, text=%q)",
-			u.EditedChannelPost.MessageID,
-			u.EditedChannelPost.Chat.ID,
-			u.EditedChannelPost.Text,
-		)
-	}
-	if u.InlineQuery != nil {
-		return fmt.Sprintf("InlineQuery(id=%s, from=%d, query=%q)",
-			u.InlineQuery.ID,
-			u.InlineQuery.From.ID,
-			u.InlineQuery.Query,
-		)
-	}
-	if u.ChosenInlineResult != nil {
-		return fmt.Sprintf("ChosenInlineResult(result_id=%s, from=%d, query=%q)",
-			u.ChosenInlineResult.ResultID,
-			u.ChosenInlineResult.From.ID,
-			u.ChosenInlineResult.Query,
-		)
-	}
-	if u.ShippingQuery != nil {
-		return fmt.Sprintf("ShippingQuery(id=%s, from=%d)",
-			u.ShippingQuery.ID,
-			u.ShippingQuery.From.ID,
-		)
-	}
-	if u.PreCheckoutQuery != nil {
-		return fmt.Sprintf("PreCheckoutQuery(id=%s, from=%d)",
-			u.PreCheckoutQuery.ID,
-			u.PreCheckoutQuery.From.ID,
-		)
-	}
-	if u.Poll != nil {
-		return fmt.Sprintf("Poll(id=%s, question=%q)",
-			u.Poll.ID,
-			u.Poll.Question,
-		)
-	}
-	if u.PollAnswer != nil {
-		return fmt.Sprintf("PollAnswer(poll_id=%s, user=%d)",
-			u.PollAnswer.PollID,
-			u.PollAnswer.User.ID,
-		)
-	}
-	return fmt.Sprintf("unknown update (update_id=%d)", u.UpdateID)
-}
+// ============================================
+// Stubs for testing
+// ============================================
 
-func HandlerFuncStub(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
+// HandlerFuncStub is a stub handler for testing.
+func HandlerFuncStub(ctx context.Context, update tgbotapi.Update) (status string, err *BotError) {
+	log.Printf("[Stub] Handler called for update: %v", update.UpdateID)
+	return StatusOK, nil
 }

@@ -3,7 +3,7 @@ module github.com/Enziofael/nutrigo/backend
 go 1.25.6
 
 require (
-	github.com/Enziofael/nutrigo/shared v0.0.0-20260711211229-5e17dec0dce3
+	github.com/Enziofael/nutrigo/shared v0.0.0-20260717202200-4aa59dec915d
 	github.com/gin-gonic/gin v1.12.0
 	github.com/lib/pq v1.12.3
 )

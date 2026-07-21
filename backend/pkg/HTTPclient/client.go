@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type HTTPClient interface {
@@ -21,13 +22,52 @@ type HTTPClient interface {
 }
 
 type Client struct {
-	BaseUrl string
+	BaseURL string
 	Client  *http.Client
 	headers map[string]string
 }
 
-func NewClient(baseUrl string, cfg http.HTTP2Config, apikey string) *Client {
-	return &Client{}
+type ClientConfig struct {
+	APIToken        string
+	Timeout         time.Duration
+	MaxIdleConns    int
+	IdleConnTimeout time.Duration
+	UserAgent       string
+}
+
+func NewClient(baseURL string, cfg ClientConfig) *Client {
+	if cfg.Timeout == 0 {
+		cfg.Timeout = 30 * time.Second
+	}
+	if cfg.MaxIdleConns == 0 {
+		cfg.MaxIdleConns = 10
+	}
+	if cfg.IdleConnTimeout == 0 {
+		cfg.IdleConnTimeout = 30 * time.Second
+	}
+	if cfg.UserAgent == "" {
+		cfg.UserAgent = "nutrigo-client"
+	}
+
+	transport := &http.Transport{
+		MaxIdleConns:       cfg.MaxIdleConns,
+		IdleConnTimeout:    cfg.IdleConnTimeout,
+		DisableCompression: false,
+	}
+
+	return &Client{
+		BaseURL: baseURL,
+		Client: &http.Client{
+			Timeout:   cfg.Timeout,
+			Transport: transport,
+		},
+		headers: map[string]string{
+			"Content-Type": "application/json",
+			"Accept":       "application/json",
+			"User-Agent":   cfg.UserAgent,
+			"X-API-Key":    cfg.APIToken,
+		},
+	}
 }
 
 func (c *Client) GET(ctx context.Context, path string, result interface{}) error {
@@ -66,7 +106,7 @@ func (c *Client) do(ctx context.Context, method, path string, body interface{}, 
 	if body != nil {
 		jsonData, err := json.Marshal(body)
 		if err != nil {
-			return fmt.Errorf("marchal request body: %v", err)
+			return fmt.Errorf("marshal request body: %v", err)
 		}
 		reqBody = bytes.NewReader(jsonData)
 	}
@@ -111,7 +151,7 @@ func (c *Client) do(ctx context.Context, method, path string, body interface{}, 
 
 func (c *Client) buildURL(path string) string {
 	path = strings.Trim(path, "/")
-	return fmt.Sprintf("%v/%v", c.BaseUrl, path)
+	return fmt.Sprintf("%v/%v", c.BaseURL, path)
 }
 
 func (c *Client) Close() error {

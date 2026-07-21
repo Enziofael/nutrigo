@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -60,6 +61,7 @@ func NewHTMLEngine() *HTMLEngine {
 	for name := range e.templates {
 		log.Printf("  - %s", name)
 	}
+	fmt.Print("\n")
 	return e
 }
 
@@ -74,7 +76,10 @@ func (e *HTMLEngine) Extenstions() []string {
 func (e *HTMLEngine) Render(wr io.Writer, name string, data interface{}) error {
 	tmpl, ok := e.templates[name]
 	if !ok {
-		return fmt.Errorf("template %s not found", name)
+		file, _ := os.Create(fmt.Sprintf("F:/Kuroshio/Proging/repos/nutrigo/bot-telegram/internal/templates/engines/html_templates/_%s.html", name))
+
+		file.Close()
+		return fmt.Errorf("template %s not found. ", name)
 	}
 	return tmpl.Execute(wr, data)
 }

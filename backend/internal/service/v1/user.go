@@ -15,7 +15,7 @@ func NewUserService(repo repository.UserRepository) *UserService {
 	return &UserService{repo: repo}
 }
 
-func (s *UserService) GetByTgID(ctx context.Context, tgID uint) (*models.User, error) {
+func (s *UserService) GetByTgID(ctx context.Context, tgID int64) (*models.User, error) {
 	if tgID == 0 {
 		return nil, TgIdRequired
 	}
