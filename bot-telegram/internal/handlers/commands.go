@@ -4,12 +4,12 @@ import (
 	"context"
 
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/factories"
-	"github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni"
+	tg "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni"
 	v1 "github.com/Enziofael/nutrigo/shared/models/v1"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func CommandStartHandler(ctx context.Context, update tgbotapi.Update) (string, *telegroni.BotError) {
+func CommandStartHandler(ctx context.Context, update tgbotapi.Update) (string, *tg.BotError) {
 	user, ok := ctx.Value("user").(*v1.User)
 	if !ok || user == nil {
 		user = &v1.User{
@@ -35,5 +35,5 @@ func CommandStartHandler(ctx context.Context, update tgbotapi.Update) (string, *
 
 	ctx.Value("bot").(*tgbotapi.BotAPI).Send(msg)
 
-	return telegroni.StatusOK, nil
+	return tg.StatusOK, nil
 }

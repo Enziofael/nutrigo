@@ -12,6 +12,7 @@ import (
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/handlers"
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/templates"
 	tg "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni"
+	"github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni/defaults"
 	cfg "github.com/Enziofael/nutrigo/shared/config"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -26,13 +27,7 @@ func init() {
 
 func main() {
 
-	srv, err := tg.New(tg.ServerConfig{
-		BotConfig: tg.BotConfig{APIToken: cfg.GetBotToken()},
-	})
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	srv := tg.New(tg.NewConfig(cfg.GetBotToken()))
 
 	clt := client.New(cfg.GetBackendFullURL(), httpclient.ClientConfig{
 		APIToken: cfg.GetBackendAPIToken(),
@@ -40,8 +35,8 @@ func main() {
 	srv.Context = context.WithValue(srv.Context, "client", clt)
 
 	{
-		srv.Apply(tg.DefaultLogMiddleware)
-		srv.Apply(tg.NewMiddleware(func(ctx context.Context, update tgbotapi.Update, next tg.HandlerFunc) (status string, err *tg.BotError) {
+		//srv.Apply(tg.DefaultLogging())
+		srv.Apply(tg.NewMiddleware(func(ctx context.Context, update tgbotapi.Update, next tg.HandlerFunc, "UserGet") (status string, err *tg.BotError) {
 			u, er := clt.GetUser(ctx, update)
 			if er != nil {
 				return tg.StatusError, tg.NewBotError(er.Error(), nil)
@@ -53,15 +48,15 @@ func main() {
 	}
 
 	{
-		callbackQuery := srv.Group(tg.IsCallbackQuery, "callbackquery group")
+		callbackQuery := srv.Group(defaults.IsCallbackQuery, "callbackquery group")
 
-		callbackQuery.Use(tg.CallbackQuery("user_usage_request"), tg.HandlerFuncStub, "userUsage_request")
+		callbackQuery.Handle(defaults.CallbackQuery("user_usage_request"), defaults.HandlerFuncStub, "userUsage_request")
 	}
 	{
-		command := srv.Group(tg.IsCommand, "command group")
+		command := srv.Group(defaults.IsCommand, "command group")
 
-		command.Use(tg.Command("start"), handlers.CommandStartHandler, "start command")
-		command.Use(tg.Command("admin"), tg.HandlerFuncStub, "admin command")
+		command.Handle(defaults.Command("start"), handlers.CommandStartHandler, "start command")
+		command.Handle(defaults.Command("admin"), defaults.HandlerFuncStub, "admin command")
 	}
 
 	srv.Start()

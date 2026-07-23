@@ -1,4 +1,4 @@
-package telegroni
+package types
 
 import "fmt"
 

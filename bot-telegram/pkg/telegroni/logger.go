@@ -1,70 +1,78 @@
-package telegroni
+package types
 
 import (
 	"context"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 
+	"github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni/consts"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-const (
-	reset     = "\033[0m"
-	bold      = "\033[1m"
-	dim       = "\033[2m"
-	italic    = "\033[3m"
-	underline = "\033[4m"
+// - Logger is a struct for containing output and error streams to log,
+//
+// - out is a io.Writer for default logs
+//
+// - err is a io.Writer for error logs
+//
+// - mu is a Mutex to prevent data race while writing
+//
+// - Colored defines if Logger can use ANSI colors for logging
+//
+// Use NewLogger() to create instanses
+type Logger struct {
+	out     io.Writer
+	err     io.Writer
+	mu      sync.Mutex
+	Colored bool
+	Config  LogConfig
+}
 
-	black   = "\033[30m"
-	red     = "\033[31m"
-	green   = "\033[32m"
-	yellow  = "\033[33m"
-	blue    = "\033[34m"
-	magenta = "\033[35m"
-	cyan    = "\033[36m"
-	white   = "\033[37m"
+// - NewLogger() creates a new Logger and returns a pointer to it
+//
+// - writers redefine output and error streams
+// instead of os.Stdout and os.Stderr, respectively
+//
+// # If no writer is provided:
+//
+// out and err will remain standard streams
+//
+// # If exactly 1 writer is provided:
+//
+// it will be applied to both output and error streams it's not nil
+//
+// # If at least 2 writers are provided:
+//
+// the first one will be applied to output stream
+// if it's not nil,
+//
+// the second one will be applied to error stream
+// if it's not nil
+//
+// subsequent writers after the second writer will be ignored.
+func NewLogger(writers ...*os.File) *Logger {
 
-	bgBlack   = "\033[40m"
-	bgRed     = "\033[41m"
-	bgGreen   = "\033[42m"
-	bgYellow  = "\033[43m"
-	bgBlue    = "\033[44m"
-	bgMagenta = "\033[45m"
-	bgCyan    = "\033[46m"
-	bgWhite   = "\033[47m"
-)
+	out, err := os.Stdout, os.Stderr
 
-const (
-	UpdateTypeTextMessage        = " TEXT"
-	UpdateTypeCommand            = " COMMAND"
-	UpdateTypeCallbackQuery      = " CALLBACKQ"
-	UpdateTypeEditedMessage      = " EDIT"
-	UpdateTypeChannelPost        = " CHANNELPOST"
-	UpdateTypeEditedChannelPost  = " EDITCHANPOST"
-	UpdateTypeInlineQuery        = " INLINEQ"
-	UpdateTypeChosenInlineResult = " CHOSENINLINERES"
-	UpdateTypeShippingQuery      = " SHIPPINGQ"
-	UpdateTypePreCheckoutQuery   = " PRECHECKOUTQ"
-	UpdateTypePoll               = " POLL"
-	UpdateTypePollAnswer         = " POLLANSWER"
-	UpdateTypeUnknown            = " UNKNOWN"
-)
+	if len(writers) == 1 && writers[0] != nil {
+		out, err = writers[0], writers[0]
+	}
+	if len(writers) >= 2 && writers[0] != nil {
+		out = writers[0]
+	}
+	if len(writers) >= 2 && writers[1] != nil {
+		err = writers[1]
+	}
 
-const (
-	StatusError = "ERR"
-	StatusOK    = "OK"
-	StatusWarn  = "WARN"
-)
-
-const (
-	UPDATE_TYPE_WIDTH = 17
-	USERNAME_WIDTH    = 15
-)
+	return &Logger{
+		out:     out,
+		err:     err,
+		Colored: isTerminal(),
+	}
+}
 
 func isTerminal() bool {
 	stat, err := os.Stdout.Stat()
@@ -74,282 +82,282 @@ func isTerminal() bool {
 	return (stat.Mode() & os.ModeCharDevice) != 0
 }
 
-type Logger struct {
-	out     io.Writer
-	mu      sync.Mutex
-	Colored bool
+func DefaultLogging(l *Logger) MiddlewareFunc {
+	return l.logMiddleware
 }
 
-func NewLogger() *Logger {
-	return &Logger{
-		out:     os.Stdout,
-		Colored: isTerminal(),
-	}
-}
-
-var DefaultLogMiddleware = NewMiddleware(mwLogger, "Default logger")
-var defaultLogger = NewLogger()
-
-func LogGlobalError(ctx context.Context, update tgbotapi.Update) {
-	startTimestamp := ctx.Value("timestamp_recieved").(time.Time)
-
-	statusS := formatStatus(StatusError)
-	end := time.Now()
-	duration := end.Sub(startTimestamp)
-	durationS := formatDuration(duration, defaultLogger.Colored)
-	timestamp := startTimestamp.Format("2006/01/02 - 15:04:05")
-	dateS, updateS, usernameS, detailsS := defaultLogger.getUpdateData(update, end)
-	err := NewBotError("error: unhandled update", nil)
-
-	line := fmt.Sprintf("[BOT] %s |%s|%s|%s|%s|%s %s %s\n",
-		timestamp, dateS, statusS, durationS, usernameS, updateS, detailsS, err.Message)
-
-	defaultLogger.mu.Lock()
-	defaultLogger.out.Write([]byte(line))
-	defaultLogger.mu.Unlock()
-}
-
-func mwLogger(ctx context.Context, update tgbotapi.Update, next HandlerFunc) (status string, err *BotError) {
-	startTimestamp := ctx.Value("timestamp_recieved").(time.Time)
-	timestamp := startTimestamp.Format("2006/01/02 - 15:04:05")
+func (l *Logger) logMiddleware(ctx context.Context, update tgbotapi.Update, next HandlerFunc) (status string, err *BotError) {
 
 	status, err = next(ctx, update)
-	if err == nil {
-		err = NewBotError("", nil)
-	} else {
-		err = NewBotError(fmt.Sprintf("error: \"%v\"", err), nil)
-	}
 
-	end := time.Now()
-	duration := end.Sub(startTimestamp)
+	timestampHandled := time.Now()
 
-	durationS := formatDuration(duration, defaultLogger.Colored)
-
-	statusS := formatStatus(status)
-	dateS,
-		updateS,
-		usernameS,
-		detailsS := defaultLogger.getUpdateData(update, end)
-
-	line := fmt.Sprintf("[BOT] %s |%s|%s|%s|%s|%s %s %s\n",
-		timestamp, dateS, statusS, durationS, usernameS, updateS, detailsS, err.Message)
-
-	defaultLogger.mu.Lock()
-	defaultLogger.out.Write([]byte(line))
-	defaultLogger.mu.Unlock()
-
+	go func() {
+		timestampRouted := ctx.Value(ContextKey_TimestampRouted).(time.Time)
+		l.Log(NewLog(ctx, update, status, err, timestampRouted, timestampHandled))
+	}()
 	return status, err
 }
 
-func (l *Logger) getUpdateData(u tgbotapi.Update, end time.Time) (date string, ut string, username string, details string) {
+func (l *Logger) Log(log Log) {
+	s := log.String(l.Config, l.Colored)
+	l.mu.Lock()
+	l.out.Write([]byte(s))
+	l.mu.Unlock()
+}
+
+func (l *Logger) Err(log Log) {
+	s := log.String(l.Config, l.Colored)
+	l.mu.Lock()
+	l.err.Write([]byte(s))
+	l.mu.Unlock()
+}
+
+func (l *Logger) Write(s string) {
+	s = "[Bot]" + s
+	l.mu.Lock()
+	l.out.Write([]byte(s))
+	l.mu.Unlock()
+}
+
+func (l *Logger) WriteErr(s string) {
+	s = "[Bot] Error: " + s
+	l.mu.Lock()
+	l.err.Write([]byte(s))
+	l.mu.Unlock()
+}
+
+type Log struct {
+	Timestamp      time.Time
+	Delay          *time.Duration
+	Status         string
+	ProcessingTime time.Duration
+	Username       string
+	RoutingPath    string
+	Update         tgbotapi.Update
+	Details        string
+}
+
+func NewLog(ctx context.Context, u tgbotapi.Update, status string, err *BotError, routed time.Time, handled time.Time) Log {
+	return Log{
+		Timestamp:      handled,
+		Delay:          getDelay(u, handled),
+		Status:         status,
+		ProcessingTime: getProcessingTime(routed, handled),
+		Username:       getUsername(u),
+		RoutingPath:    getRoutingPath(ctx),
+		Update:         u,
+		Details:        getDetails(),
+	}
+}
+
+func getDelay(u tgbotapi.Update, handled time.Time) *time.Duration {
+	var sendAt time.Time
+	switch {
+	case u.Message != nil:
+		sendAt = u.Message.Time().UTC()
+	case u.EditedMessage != nil:
+		sendAt = u.EditedMessage.Time().UTC()
+	case u.ChannelPost != nil:
+		sendAt = u.ChannelPost.Time().UTC()
+	case u.EditedChannelPost != nil:
+		sendAt = u.EditedChannelPost.Time().UTC()
+	case u.CallbackQuery != nil && u.CallbackQuery.Message != nil:
+		sendAt = u.CallbackQuery.Message.Time().UTC()
+	}
+	if sendAt.IsZero() {
+		return nil
+	}
+	res := handled.UTC().Sub(sendAt)
+	if res < 0 {
+		res = 0
+	}
+	return &res
+}
+
+func getProcessingTime(routed time.Time, handled time.Time) time.Duration {
+	res := handled.UTC().Sub(routed.UTC())
+	if res < 0 {
+		res = 0
+	}
+	return res
+}
+
+func getRoutingPath(ctx context.Context) string {
+	return ctx.Value(ContextKey_Path).(string)
+}
+
+func getDetails() string {
+	return "details stub"
+}
+
+func getUsername(u tgbotapi.Update) string {
+	res := ""
+	switch {
+	case u.Message != nil:
+		res = u.Message.From.UserName
+	case u.EditedMessage != nil:
+		res = u.EditedMessage.From.UserName
+	case u.ChannelPost != nil:
+		res = u.ChannelPost.Chat.UserName
+	case u.EditedChannelPost != nil:
+		res = u.EditedChannelPost.From.UserName
+	case u.CallbackQuery != nil && u.CallbackQuery.Message != nil:
+		res = u.CallbackQuery.Message.From.UserName
+	default:
+		res = fmt.Sprintf("getUsernameError %#v", u)
+	}
+	return res
+}
+
+type LogConfig struct {
+	DelayWidth          int
+	StatusWidth         int
+	ProcessingTimeWidth int
+	Usernamewidth       int
+	UpdateWidth         int
+	RoutingPathWidth    int
+}
+
+func (l Log) String(cfg LogConfig, colored bool) string {
+	return "[BOT]" +
+		formatTimestamp(l.Timestamp) + "|" +
+		formatDelay(l.Delay, cfg.DelayWidth) + "|" +
+		formatStatus(l.Status, cfg.StatusWidth) + "|" +
+		formatProcessingTime(l.ProcessingTime, cfg.ProcessingTimeWidth) + "|" +
+		formatUsername(l.Username, cfg.Usernamewidth) + "|" +
+		formatUpdate(l.Update, colored, cfg.UpdateWidth) + "|" +
+		formatRoutingPath(l.RoutingPath, cfg.RoutingPathWidth) +
+		formatDetails(l.Details)
+}
+
+func formatTimestamp(timestamp time.Time) string {
+	s := timestamp.Format(" 2006/01/02 - 15:04:05 ")
+
+	return s
+}
+
+func formatDelay(delay *time.Duration, width int) string {
+	var s string
+	if delay == nil {
+		s = padLeft(" --- ", width)
+	} else if *delay < 1000*time.Millisecond {
+		s = fmt.Sprintf(" %3.3fms ", float64(delay.Nanoseconds())/1000)
+	} else if *delay < 10*time.Second {
+		s = fmt.Sprintf(" %4.2fms ", float64(delay.Nanoseconds())/100)
+	} else if *delay < 1000*time.Second {
+		s = fmt.Sprintf(" %3.3fs ", float64(delay.Milliseconds())/1000)
+	} else if *delay < 200*time.Minute {
+		s = fmt.Sprintf(" %dm%ds ", int(delay.Minutes()), int(delay.Seconds())%60)
+	} else if *delay < 23*time.Hour {
+		s = fmt.Sprintf(" %dh%dm ", int(delay.Hours()), int(delay.Minutes())%60)
+	} else {
+		s = fmt.Sprintf(" %dh ", int(delay.Hours()))
+	}
+	return padLeft(s, width)
+}
+
+func formatStatus(status string, width int) string {
+	return padLeft(status, width)
+}
+
+func formatProcessingTime(processingTime time.Duration, width int) string {
+	var s string
+	if processingTime < 1000*time.Millisecond {
+		s = fmt.Sprintf(" %3.3fms ", float64(processingTime.Nanoseconds())/1000)
+	} else if processingTime < 10*time.Second {
+		s = fmt.Sprintf(" %4.2fms ", float64(processingTime.Nanoseconds())/100)
+	} else if processingTime < 1000*time.Second {
+		s = fmt.Sprintf(" %3.3fs ", float64(processingTime.Milliseconds())/1000)
+	} else if processingTime < 200*time.Minute {
+		s = fmt.Sprintf(" %dm%ds ", int(processingTime.Minutes()), int(processingTime.Seconds())%60)
+	} else if processingTime < 23*time.Hour {
+		s = fmt.Sprintf(" %dh%dm ", int(processingTime.Hours()), int(processingTime.Minutes())%60)
+	} else {
+		s = fmt.Sprintf(" %dh ", int(processingTime.Hours()))
+	}
+	return padLeft(s, width)
+}
+
+func formatUsername(username string, width int) string {
+	if username != "" {
+		username = "@" + username
+	} else {
+		username = "---"
+	}
+	return padLeft(username, width)
+}
+
+func formatRoutingPath(routingPath string, width int) string {
+	routingPath += " " + routingPath
+	return padRight(routingPath, width)
+}
+
+func formatUpdate(u tgbotapi.Update, colored bool, width int) string {
 	switch {
 	// ===== POLL ANSWER (голос) =====
 	case u.PollAnswer != nil:
-		return formatDate(time.Unix(0, 0), end),
-			l.updateTypeFormated(UpdateTypePollAnswer, bgBlue, italic),
-			formatUsername(u.PollAnswer.User.UserName),
-			fmt.Sprintf("poll_id=%s, options=%v", u.PollAnswer.PollID, u.PollAnswer.OptionIDs)
+		return formatUpdateType(colored, width, consts.UT_PollAnswer, consts.ANSI_BG_BLUE, consts.ANSI_ITALIC)
 
 	// ===== MESSAGE =====
 	case u.Message != nil && u.Message.Poll != nil:
-		return formatDate(u.Message.Time(), end),
-			l.updateTypeFormated(UpdateTypePoll, bgBlue, bold),
-			formatUsername(u.Message.From.UserName),
-			fmt.Sprintf("poll_id=%q, q=%q, total=%d, options=%v", u.Message.Poll.ID, u.Message.Poll.Question, len(u.Message.Poll.Options), u.Message.Poll.Options)
+		return formatUpdateType(colored, width, consts.UT_Poll, consts.ANSI_BG_BLUE, consts.ANSI_BOLD)
 
 	case u.Message != nil && u.Message.IsCommand():
-		return formatDate(u.Message.Time(), end),
-			l.updateTypeFormated(UpdateTypeCommand, bgGreen),
-			formatUsername(u.Message.From.UserName),
-			fmt.Sprintf("command:%q", u.Message.Text)
+		return formatUpdateType(colored, width, consts.UT_Command, consts.ANSI_BG_GREEN)
 
 	case u.Message != nil && u.Message.Text != "":
-		return formatDate(u.Message.Time(), end),
-			l.updateTypeFormated(UpdateTypeTextMessage, bgCyan),
-			formatUsername(u.Message.From.UserName),
-			fmt.Sprintf("text:%q", u.Message.Text)
+		return formatUpdateType(colored, width, consts.UT_TextMessage, consts.ANSI_BG_CYAN)
 
 	// ===== CALLBACK =====
 	case u.CallbackQuery != nil:
-		return formatDate(time.Unix(0, 0), end),
-			l.updateTypeFormated(UpdateTypeCallbackQuery, bgGreen),
-			formatUsername(u.CallbackQuery.From.UserName),
-			fmt.Sprintf("%q", u.CallbackQuery.Data)
+		return formatUpdateType(colored, width, consts.UT_CallbackQuery, consts.ANSI_BG_BRIGHT_GREEN)
 
 	// ===== EDITED =====
 	case u.EditedMessage != nil:
-		return formatDate(u.EditedMessage.Time(), end),
-			l.updateTypeFormated(UpdateTypeEditedMessage, bgCyan, italic),
-			formatUsername(u.EditedMessage.From.UserName),
-			fmt.Sprintf("%q", u.EditedMessage.Text)
+		return formatUpdateType(colored, width, consts.UT_EditedMessage, consts.ANSI_BG_CYAN, consts.ANSI_ITALIC)
 
 	// ===== CHANNEL =====
 	case u.ChannelPost != nil:
-		return formatDate(u.ChannelPost.Time(), end),
-			l.updateTypeFormated(UpdateTypeChannelPost, bgMagenta),
-			formatUsername(u.ChannelPost.From.UserName),
-			fmt.Sprintf("%q", u.ChannelPost.Text)
+		return formatUpdateType(colored, width, consts.UT_ChannelPost, consts.ANSI_BG_MAGENTA)
 
 	case u.EditedChannelPost != nil:
-		return formatDate(u.EditedChannelPost.Time(), end),
-			l.updateTypeFormated(UpdateTypeEditedChannelPost, bgMagenta, italic),
-			formatUsername(u.EditedChannelPost.From.UserName),
-			fmt.Sprintf("%q", u.EditedChannelPost.Text)
+		return formatUpdateType(colored, width, consts.UT_EditedChannelPost, consts.ANSI_BG_MAGENTA, consts.ANSI_ITALIC)
 
 	// ===== INLINE =====
 	case u.InlineQuery != nil:
-		return formatDate(time.Unix(0, 0), end),
-			l.updateTypeFormated(UpdateTypeInlineQuery, bgGreen),
-			formatUsername(u.InlineQuery.From.UserName),
-			fmt.Sprintf("query=%q, offset=%q", u.InlineQuery.Query, u.InlineQuery.Offset)
+		return formatUpdateType(colored, width, consts.UT_InlineQuery, consts.ANSI_BG_GREEN)
 
 	case u.ChosenInlineResult != nil:
-		return formatDate(time.Unix(0, 0), end),
-			l.updateTypeFormated(UpdateTypeChosenInlineResult, bgGreen),
-			formatUsername(u.ChosenInlineResult.From.UserName),
-			fmt.Sprintf("result_id=%s, query=%q", u.ChosenInlineResult.ResultID, u.ChosenInlineResult.Query)
+		return formatUpdateType(colored, width, consts.UT_ChosenInlineResult, consts.ANSI_BG_GREEN)
 
 	// ===== PAYMENTS =====
 	case u.ShippingQuery != nil:
-		return formatDate(time.Unix(0, 0), end),
-			l.updateTypeFormated(UpdateTypeShippingQuery, bgRed, bold),
-			formatUsername(u.ShippingQuery.From.UserName),
-			fmt.Sprintf("shipping_id=%s", u.ShippingQuery.ID)
+		return formatUpdateType(colored, width, consts.UT_ShippingQuery, consts.ANSI_BG_RED, consts.ANSI_BOLD)
 
 	case u.PreCheckoutQuery != nil:
-		return formatDate(time.Unix(0, 0), end),
-			l.updateTypeFormated(UpdateTypePreCheckoutQuery, bgRed, bold),
-			formatUsername(u.PreCheckoutQuery.From.UserName),
-			fmt.Sprintf("invoice_payload=%s", u.PreCheckoutQuery.InvoicePayload)
+		return formatUpdateType(colored, width, consts.UT_PreCheckoutQuery, consts.ANSI_BG_RED, consts.ANSI_BOLD)
 
 	// ===== UNKNOWN =====
 	default:
-		return formatDate(time.Unix(0, 0), end),
-			l.updateTypeFormated(UpdateTypeUnknown, bgBlack, red, bold),
-			formatUsername(""),
-			fmt.Sprintf("UpdateID=%v", u.UpdateID)
+		return formatUpdateType(colored, width, consts.UT_Unknown, consts.ANSI_BG_BLACK, consts.ANSI_BRIGHT_RED, consts.ANSI_BOLD)
 	}
 }
 
-func formatDate(t time.Time, end time.Time) string {
-
-	if t.Equal(time.Unix(0, 0)) {
-		return fmt.Sprintf("%s%s%s%s", bgBlack, red, padLeft("---", 11), reset)
+func formatUpdateType(colored bool, width int, ut string, colors ...string) string {
+	text := string(ut)
+	text = padRight(text, width)
+	if !colored {
+		return fmt.Sprintf(" %s ", text)
 	}
-	t = t.UTC()
-	end = end.UTC()
-
-	t = t.Truncate(time.Second)
-	dur := end.Sub(t)
-	if dur < 0 {
-		dur = 0
-	}
-	dateS := ""
-	switch {
-	case dur < time.Millisecond*500:
-		dateS = fmt.Sprintf("%3.3fms ", float64(dur.Microseconds())/1000)
-	default:
-		dateS = fmt.Sprintf("%3.3fs ", float64((dur-dur.Truncate(time.Hour)).Milliseconds())/1000)
-	}
-
-	dateS = padLeft(dateS, 11)
-
-	if defaultLogger.Colored {
-		switch {
-		case dur < time.Second*2:
-			dateS = fmt.Sprintf("%s%s%s", bgGreen, dateS, reset)
-		case dur < time.Second*5:
-			dateS = fmt.Sprintf("%s%s%s", bgYellow, dateS, reset)
-		default:
-			dateS = fmt.Sprintf("%s%s%s", bgRed, dateS, reset)
-		}
-	}
-
-	return dateS
-}
-
-func (l *Logger) updateTypeFormated(ut string, colors ...string) string {
 	prefix := ""
 	for _, c := range colors {
 		prefix += c
 	}
 
-	text := string(ut)
-	if len(text) < UPDATE_TYPE_WIDTH {
-		text = text + strings.Repeat(" ", UPDATE_TYPE_WIDTH-len(text))
-	}
-	if l.Colored {
-		text = fmt.Sprintf("%s%s%s", prefix, text, reset)
-	}
-	return text
+	return prefix + text + consts.ANSI_RESET
 }
 
-func padLeft(s string, length int) string {
-	slen := utf8.RuneCountInString(s)
-	if slen > length {
-		length = slen
-	}
-	pad := strings.Repeat(" ", length-slen)
-	return fmt.Sprintf("%s%s", pad, s)
-}
-func padRight(s string, length int) string {
-	slen := utf8.RuneCountInString(s)
-	if slen > length {
-		length = slen
-	}
-	pad := strings.Repeat(" ", length-slen)
-	return fmt.Sprintf("%s%s", s, pad)
-}
-
-func formatUsername(username string) string {
-	us := fmt.Sprintf(" @%s", padRight(username, USERNAME_WIDTH))
-
-	return us
-}
-
-func formatStatus(status string) string {
-	statusS := padRight(status, 4)
-
-	if defaultLogger.Colored {
-		switch status {
-		case StatusOK:
-			statusS = fmt.Sprintf("%s %s %s", bgGreen, statusS, reset)
-		case StatusError:
-			statusS = fmt.Sprintf("%s %s %s", bgRed, statusS, reset)
-		case StatusWarn:
-			statusS = fmt.Sprintf("%s %s %s", bgYellow, statusS, reset)
-		default:
-			statusS = fmt.Sprintf("%s%s%s %s %s", bgBlack, red, bold, statusS, reset)
-		}
-	}
-	return statusS
-}
-
-func formatDuration(d time.Duration, colored bool) string {
-	var durationS string
-	switch {
-	case d < time.Microsecond*500:
-		durationS = fmt.Sprintf("%3.3fμs ", float64(d.Nanoseconds())/1000)
-	case d < time.Millisecond*500:
-		durationS = fmt.Sprintf("%3.3fms ", float64(d.Microseconds())/1000)
-	default:
-		durationS = fmt.Sprintf("%3.3fs ", float64(d.Milliseconds())/1000)
-	}
-
-	durationS = padLeft(durationS, 11)
-
-	if colored {
-		switch {
-		case d < time.Millisecond*100:
-			durationS = fmt.Sprintf("%s%s%s", bgWhite, durationS, reset)
-		case d < time.Millisecond*200:
-			durationS = fmt.Sprintf("%s%s%s", bgGreen, durationS, reset)
-		case d < time.Second:
-			durationS = fmt.Sprintf("%s%s%s", bgYellow, durationS, reset)
-		default:
-			durationS = fmt.Sprintf("%s%s%s", bgRed, durationS, reset)
-		}
-	}
-
-	return durationS
+func formatDetails(Details string) string {
+	return " " + Details
 }
