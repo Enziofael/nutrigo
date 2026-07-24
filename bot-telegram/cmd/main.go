@@ -3,7 +3,6 @@
 package main
 
 import (
-	"context"
 	"log"
 
 	httpclient "github.com/Enziofael/nutrigo/backend/pkg/HTTPclient"
@@ -31,17 +30,17 @@ func main() {
 	clt := client.New(cfg.GetBackendFullURL(), httpclient.ClientConfig{
 		APIToken: cfg.GetBackendAPIToken(),
 	})
-	srv.Context = context.WithValue(srv.Context, "client", clt)
+	srv.Context = srv.Context.WithValue("client", clt)
 
 	{
 		srv.Apply(tg.DefaultLogging(srv), "Logger")
 
-		srv.Apply(func(ctx context.Context, update tgbotapi.Update, next tg.HandlerFunc) (status tg.HandleStatus, err *tg.BotError) {
-			u, er := clt.GetUser(ctx, update)
+		srv.Apply(func(ctx tg.Context, update tgbotapi.Update, next tg.HandlerFunc) (status tg.HandleStatus, err *tg.BotError) {
+			u, er := clt.GetUser(ctx.C, update)
 			if er != nil {
 				return tg.StatusError, tg.NewBotError(er.Error(), nil)
 			}
-			ctx = context.WithValue(ctx, "user", u)
+			ctx = srv.Context.WithValue("user", u)
 			return next(ctx, update)
 
 		}, "UserGet middleware")

@@ -1,7 +1,6 @@
 package telegroni
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -214,7 +213,7 @@ type Log struct {
 	Details        string
 }
 
-func NewLog(ctx context.Context, u tgbotapi.Update, status HandleStatus, err *BotError, recieved time.Time, handled time.Time) Log {
+func NewLog(ctx Context, u tgbotapi.Update, status HandleStatus, err *BotError, recieved time.Time, handled time.Time) Log {
 	return Log{
 		Timestamp:      handled,
 		Delay:          getDelay(u, handled),
@@ -264,7 +263,7 @@ func getProcessingTime(recieved time.Time, handled time.Time) time.Duration {
 	return res
 }
 
-func getRoutingPath(ctx context.Context) string {
+func getRoutingPath(ctx Context) string {
 	return ctx.Value(ContextKey_Path).(string)
 }
 
@@ -692,7 +691,7 @@ func DefaultLogging(s *Server) MiddlewareFunc {
 	return s.Logger.defaultLogMiddleware
 }
 
-func (l *Logger) defaultLogMiddleware(ctx context.Context, update tgbotapi.Update, next HandlerFunc) (status HandleStatus, err *BotError) {
+func (l *Logger) defaultLogMiddleware(ctx Context, update tgbotapi.Update, next HandlerFunc) (status HandleStatus, err *BotError) {
 
 	status, err = next(ctx, update)
 

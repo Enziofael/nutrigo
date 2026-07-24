@@ -1,7 +1,6 @@
 package telegroni
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -125,10 +124,11 @@ func padRight(s string, length int) string {
 	return fmt.Sprintf("%s%s", s, pad)
 }
 
-func appendPath(ctx context.Context, path string) context.Context {
-	oldPath := ctx.Value(ContextKey_Path).(string)
+func appendPath(ctx Context, path string) Context {
+	oldPath := ctx.RoutingPath
 	newPath := fmt.Sprintf("%s/%s", oldPath, path)
-	return context.WithValue(ctx, ContextKey_Path, newPath)
+	ctx.RoutingPath = newPath
+	return ctx
 }
 
 func isTerminal() bool {

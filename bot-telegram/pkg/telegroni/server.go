@@ -34,11 +34,11 @@
 //		srv.Start()
 //	}
 //
-//	func handleStart(ctx context.Context, update tgbotapi.Update) {
+//	func handleStart(ctx Context, update tgbotapi.Update) {
 //		// Do something
 //	}
 //
-//	func LoggerMiddleware(ctx context.Context, update tgbotapi.Update, next tgbot.HandlerFunc) {
+//	func LoggerMiddleware(ctx Context, update tgbotapi.Update, next tgbot.HandlerFunc) {
 //		log.Println("Before")
 //		next(ctx, update)
 //		log.Println("After")
@@ -238,7 +238,7 @@ func (cfg ServerConfig) SetAllowedUpdates(allowed []string) {
 //	type Server struct
 //	type Route struct
 type Route interface {
-	handle(ctx context.Context, u tgbotapi.Update) (matched bool, status HandleStatus, err *BotError)
+	handle(ctx Context, u tgbotapi.Update) (matched bool, status HandleStatus, err *BotError)
 }
 
 // ======================== TYPE =========================
@@ -316,7 +316,7 @@ type Route interface {
 //
 // # Methods:
 type Server struct {
-	Context         context.Context
+	Context         Context
 	Routes          []Route
 	Middlewares     []Middleware
 	RoutingFallback RoutingFallbackFunc
@@ -359,7 +359,7 @@ type Server struct {
 func New(config ServerConfig) *Server {
 	return &Server{
 		//Root context. Contains *BotAPI and Timestamp when Update was routed
-		Context:         context.Background(),
+		Context:         Context{C: context.Background()},
 		Routes:          make([]Route, 0),
 		Middlewares:     make([]Middleware, 0),
 		RoutingFallback: defaultRoutingFallback,
@@ -491,7 +491,7 @@ func (s *Server) Start() *BotError {
 	if err != nil {
 		return NewBotError("Bot Creation failed", NewBotError(err.Error(), nil))
 	}
-	s.Context = context.WithValue(s.Context, ContextKey_Bot, bot)
+	s.Context.Bot = bot
 
 	u := s.Config.ApiConfig
 
@@ -505,8 +505,8 @@ func (s *Server) Start() *BotError {
 	updates := bot.GetUpdatesChan(u)
 
 	for update := range updates {
-		ctx := context.WithValue(s.Context, ContextKey_TimestampRecieved, time.Now())
-		go s.handle(ctx, update)
+		s.Context.TimestampRecieved = time.Now()
+		go s.handle(s.Context, update)
 	}
 
 	return nil
@@ -537,12 +537,10 @@ const ContextKey_TimestampRecieved = "timestamp_recieved" // UNDOCKED
 //
 //	//Used in:
 //	func (s *Server) Start()
-func (s *Server) handle(ctx context.Context, u tgbotapi.Update) {
+func (s *Server) handle(ctx Context, u tgbotapi.Update) {
 	var matched bool
 	var status HandleStatus
 	var err *BotError
-
-	ctx = context.WithValue(ctx, ContextKey_Path, "")
 
 	for _, route := range s.Routes {
 		matched, status, err = route.handle(ctx, u)
@@ -563,7 +561,7 @@ func (s *Server) handle(ctx context.Context, u tgbotapi.Update) {
 //
 //	func (s *Server) Start()
 //	type Server struct
-func defaultRoutingFallback(ctx context.Context, l *Logger, u tgbotapi.Update, status HandleStatus, err *BotError) {
+func defaultRoutingFallback(ctx Context, l *Logger, u tgbotapi.Update, status HandleStatus, err *BotError) {
 	hints.Do(l.printHint)
 	log := NewLog(ctx, u, StatusFallback, err, time.Now(), time.Now())
 	l.Log(log)
