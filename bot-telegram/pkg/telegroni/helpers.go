@@ -124,7 +124,7 @@ func padRight(s string, length int) string {
 }
 
 func appendPath(ctx context.Context, path string) context.Context {
-	oldPath := ctx.Value("userID").(string)
+	oldPath := ctx.Value(ContextKey_Path).(string)
 	newPath := fmt.Sprintf("%s/%s", oldPath, path)
 	return context.WithValue(ctx, ContextKey_Path, newPath)
 }

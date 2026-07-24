@@ -4,7 +4,7 @@ import (
 	"context"
 
 	t "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
 
 func IsMessage(ctx context.Context, update tgbotapi.Update) bool {

@@ -1,6 +1,6 @@
 package telegroni
 
-import tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+import tgbotapi "github.com/OvyFlash/telegram-bot-api"
 
 // type HandlerFunc func(bot *tgbotapi.BotAPI, update tgbotapi.Update)
 func Send(bot *tgbotapi.BotAPI, config tgbotapi.Chattable) {

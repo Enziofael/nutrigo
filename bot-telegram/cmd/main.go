@@ -14,7 +14,7 @@ import (
 	tg "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni"
 	"github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni/defaults"
 	cfg "github.com/Enziofael/nutrigo/shared/config"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
 
 func init() {
@@ -35,8 +35,11 @@ func main() {
 	srv.Context = context.WithValue(srv.Context, "client", clt)
 
 	{
-		//srv.Apply(tg.DefaultLogging())
-		srv.Apply(tg.NewMiddleware(func(ctx context.Context, update tgbotapi.Update, next tg.HandlerFunc, "UserGet") (status string, err *tg.BotError) {
+		srv.Logger.Config.LogUpdateDetails = false
+		srv.Logger.Config.LogUpdateDetailsOnError = false
+		srv.Apply(tg.DefaultLogging(srv), "Logger")
+
+		srv.Apply(func(ctx context.Context, update tgbotapi.Update, next tg.HandlerFunc) (status string, err *tg.BotError) {
 			u, er := clt.GetUser(ctx, update)
 			if er != nil {
 				return tg.StatusError, tg.NewBotError(er.Error(), nil)
@@ -44,19 +47,19 @@ func main() {
 			ctx = context.WithValue(ctx, "user", u)
 			return next(ctx, update)
 
-		}, "UserGet middleware"))
+		}, "UserGet middleware")
 	}
 
 	{
-		callbackQuery := srv.Group(defaults.IsCallbackQuery, "callbackquery group")
+		callbackQuery := srv.Group(defaults.IsCallbackQuery, "callbackQ")
 
 		callbackQuery.Handle(defaults.CallbackQuery("user_usage_request"), defaults.HandlerFuncStub, "userUsage_request")
 	}
 	{
-		command := srv.Group(defaults.IsCommand, "command group")
+		command := srv.Group(defaults.IsCommand, "command")
 
-		command.Handle(defaults.Command("start"), handlers.CommandStartHandler, "start command")
-		command.Handle(defaults.Command("admin"), defaults.HandlerFuncStub, "admin command")
+		command.Handle(defaults.Command("start"), handlers.CommandStartHandler, "start")
+		command.Handle(defaults.Command("admin"), defaults.HandlerFuncStub, "admin")
 	}
 
 	srv.Start()

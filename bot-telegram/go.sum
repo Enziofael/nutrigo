@@ -2,7 +2,7 @@ github.com/Enziofael/nutrigo/backend v0.0.0-20260717202200-4aa59dec915d h1:zlPNf
 github.com/Enziofael/nutrigo/backend v0.0.0-20260717202200-4aa59dec915d/go.mod h1:gZM9L6iaLr/tMAOAE4vSuhs53zkouFNfiT9NyXGz5z4=
 github.com/Enziofael/nutrigo/shared v0.0.0-20260717202200-4aa59dec915d h1:YH/BpJ4eO4uzwmFj8LAo/pRWYZ1XOYGERoy/WdEp508=
 github.com/Enziofael/nutrigo/shared v0.0.0-20260717202200-4aa59dec915d/go.mod h1:Gqvfx1vRKad5HmZRoHdH/M5Q9BV2IJGak6n+ztkYEzI=
-github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1 h1:wG8n/XJQ07TmjbITcGiUaOtXxdrINDz1b0J1w0SzqDc=
-github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1/go.mod h1:A2S0CWkNylc2phvKXWBBdD3K0iGnDBGbzRpISP2zBl8=
+github.com/OvyFlash/telegram-bot-api v0.0.0-20260715235732-aca8bf3898bb h1:MvKVOrwsx25AOMkMTGilUTqjFJ4S/OR3nyNq1PsEwTE=
+github.com/OvyFlash/telegram-bot-api v0.0.0-20260715235732-aca8bf3898bb/go.mod h1:2nRUdsKyWhvezqW/rBGWEQdcTQeTtnbSNd2dgx76WYA=
 github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
 github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=

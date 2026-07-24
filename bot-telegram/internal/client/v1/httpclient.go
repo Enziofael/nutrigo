@@ -6,7 +6,7 @@ import (
 
 	httpclient "github.com/Enziofael/nutrigo/backend/pkg/HTTPclient"
 	models "github.com/Enziofael/nutrigo/shared/models/v1"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
 
 type Client struct {

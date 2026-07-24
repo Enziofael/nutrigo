@@ -3,8 +3,9 @@ package types
 import (
 	"context"
 	"fmt"
+	"time"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
 
 // ======================= INDEX =========================
@@ -184,6 +185,7 @@ func (h *Handler) handle(ctx context.Context, u tgbotapi.Update) (matched bool, 
 	}
 
 	ctx = appendPath(ctx, h.Name)
+	ctx = context.WithValue(ctx, ContextKey_TimestampRouted, time.Now)
 	status, err = h.HandlerFunc(ctx, u)
 
 	return true, status, err
@@ -612,10 +614,11 @@ type MiddlewareFunc func(ctx context.Context, update tgbotapi.Update, next Handl
 // - RoutingFallbackFunc process unhandled Update.
 //
 // Server calls it when no Handler matched.
-type RoutingFallbackFunc func(update tgbotapi.Update, status string, err *BotError)
+type RoutingFallbackFunc func(ctx context.Context, l *Logger, update tgbotapi.Update, status string, err *BotError)
 
 const (
-	StatusError = "ERR"
-	StatusOK    = "OK"
-	StatusWarn  = "WARN"
+	StatusError           = "ERR"
+	StatusOK              = "OK"
+	StatusWarn            = "WARN"
+	StatusRoutingFallback = "FALL"
 )

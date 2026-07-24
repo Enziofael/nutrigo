@@ -6,7 +6,7 @@ import (
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/factories"
 	tg "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni"
 	v1 "github.com/Enziofael/nutrigo/shared/models/v1"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
 
 func CommandStartHandler(ctx context.Context, update tgbotapi.Update) (string, *tg.BotError) {

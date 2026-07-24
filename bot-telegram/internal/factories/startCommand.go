@@ -4,7 +4,7 @@ import (
 	"log"
 
 	v1 "github.com/Enziofael/nutrigo/shared/models/v1"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
 
 func MainMenu(update tgbotapi.Update, user *v1.User) tgbotapi.MessageConfig {

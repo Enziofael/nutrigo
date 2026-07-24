@@ -15,7 +15,7 @@
 //
 //	import (
 //		tgbot "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni"
-//		tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+//		tgbotapi "github.com/OvyFlash/telegram-bot-api"
 //	)
 //
 //	func main() {
@@ -51,10 +51,10 @@ package types
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"time"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
 
 // ======================= INDEX =========================
@@ -320,6 +320,7 @@ type Server struct {
 	Middlewares     []Middleware
 	RoutingFallback RoutingFallbackFunc
 	Config          ServerConfig
+	Logger          *Logger //UNDOCKED
 }
 
 // ====================== EXPORTED ======================
@@ -362,6 +363,7 @@ func New(config ServerConfig) *Server {
 		Middlewares:     make([]Middleware, 0),
 		RoutingFallback: defaultRoutingFallback,
 		Config:          config,
+		Logger:          NewLogger(),
 	}
 }
 
@@ -492,9 +494,17 @@ func (s *Server) Start() *BotError {
 
 	u := s.Config.ApiConfig
 
+	s.Logger.Write("Info: Bot server start succesful")
+	s.Logger.Write(fmt.Sprintf("      Authorized on account @%s", bot.Self.UserName))
+	s.Logger.Write(fmt.Sprintf("      CanJoinGroups %t", bot.Self.CanJoinGroups))
+	s.Logger.Write(fmt.Sprintf("      CanReadAllGroupMessages %t", bot.Self.CanReadAllGroupMessages))
+	s.Logger.Write(fmt.Sprintf("      SupportsInlineQueries %t\n", bot.Self.SupportsInlineQueries))
+	s.Logger.Write(time.Now().Format("2006/01/02 - 15:04:05 ") + "Starting polling updates from telegram\n")
+
 	updates := bot.GetUpdatesChan(u)
+
 	for update := range updates {
-		ctx := context.WithValue(s.Context, ContextKey_TimestampRouted, time.Now())
+		ctx := context.WithValue(s.Context, ContextKey_TimestampRecieved, time.Now())
 		go s.handle(ctx, update)
 	}
 
@@ -509,6 +519,8 @@ const ContextKey_TimestampRouted = "timestamp_routed"
 
 // - ContextKey_Bot for getting routed update's route path from context
 const ContextKey_Path = "route_path"
+
+const ContextKey_TimestampRecieved = "timestamp_recieved" // UNDOCKED
 
 // ===================== UNEXPORTED ======================
 
@@ -538,7 +550,7 @@ func (s *Server) handle(ctx context.Context, u tgbotapi.Update) {
 		}
 	}
 	if !matched {
-		s.RoutingFallback(u, status, err)
+		s.RoutingFallback(ctx, s.Logger, u, status, err)
 	}
 }
 
@@ -550,6 +562,7 @@ func (s *Server) handle(ctx context.Context, u tgbotapi.Update) {
 //
 //	func (s *Server) Start()
 //	type Server struct
-func defaultRoutingFallback(u tgbotapi.Update, status string, err *BotError) {
-	log.Printf("[BOT] FALLBACK Unhandled update:\n\nUpdate:\n%#v\n\nError:\n%#v\n\nStatus:\n%s", u, err, status)
+func defaultRoutingFallback(ctx context.Context, l *Logger, u tgbotapi.Update, status string, err *BotError) {
+	l.Err(NewLog(ctx, u, StatusRoutingFallback, err, time.Now(), time.Now()))
+	//l.WriteErr("Routing failed - fallback called.\n" + formatUpdateDetails(reflect.ValueOf(u), 0))
 }
