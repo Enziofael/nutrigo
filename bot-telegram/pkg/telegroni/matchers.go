@@ -1,9 +1,8 @@
-package defaults
+package telegroni
 
 import (
 	"context"
 
-	t "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni"
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
 
@@ -11,7 +10,7 @@ func IsMessage(ctx context.Context, update tgbotapi.Update) bool {
 	return update.Message != nil && !update.Message.IsCommand()
 }
 
-func Message(s string) t.MatchFunc {
+func Message(s string) MatchFunc {
 	return func(ctx context.Context, update tgbotapi.Update) bool {
 		return IsMessage(ctx, update) && update.Message.Text == s
 	}
@@ -21,7 +20,7 @@ func IsEditedMessage(ctx context.Context, update tgbotapi.Update) bool {
 	return update.EditedMessage != nil
 }
 
-func EditedMessage() t.MatchFunc {
+func EditedMessage() MatchFunc {
 	return func(ctx context.Context, update tgbotapi.Update) bool {
 		return IsEditedMessage(ctx, update)
 	}
@@ -31,7 +30,7 @@ func IsInlineQuery(ctx context.Context, update tgbotapi.Update) bool {
 	return update.InlineQuery != nil
 }
 
-func InlineQuery() t.MatchFunc {
+func InlineQuery() MatchFunc {
 	return func(ctx context.Context, update tgbotapi.Update) bool {
 		return IsInlineQuery(ctx, update)
 	}
@@ -41,7 +40,7 @@ func IsChosenInlineResult(ctx context.Context, update tgbotapi.Update) bool {
 	return update.ChosenInlineResult != nil
 }
 
-func ChosenInlineResult() t.MatchFunc {
+func ChosenInlineResult() MatchFunc {
 	return func(ctx context.Context, update tgbotapi.Update) bool {
 		return IsChosenInlineResult(ctx, update)
 	}
@@ -51,7 +50,7 @@ func IsPollAnswer(ctx context.Context, update tgbotapi.Update) bool {
 	return update.PollAnswer != nil
 }
 
-func PollAnswer() t.MatchFunc {
+func PollAnswer() MatchFunc {
 	return func(ctx context.Context, update tgbotapi.Update) bool {
 		return IsPollAnswer(ctx, update)
 	}
@@ -61,7 +60,7 @@ func IsChannelPost(ctx context.Context, update tgbotapi.Update) bool {
 	return update.ChannelPost != nil
 }
 
-func ChannelPost() t.MatchFunc {
+func ChannelPost() MatchFunc {
 	return func(ctx context.Context, update tgbotapi.Update) bool {
 		return IsChannelPost(ctx, update)
 	}
@@ -71,7 +70,7 @@ func IsShippingQuery(ctx context.Context, update tgbotapi.Update) bool {
 	return update.ShippingQuery != nil
 }
 
-func ShippingQuery() t.MatchFunc {
+func ShippingQuery() MatchFunc {
 	return func(ctx context.Context, update tgbotapi.Update) bool {
 		return IsShippingQuery(ctx, update)
 	}
@@ -81,7 +80,7 @@ func IsPoll(ctx context.Context, update tgbotapi.Update) bool {
 	return update.Poll != nil
 }
 
-func Poll() t.MatchFunc {
+func Poll() MatchFunc {
 	return func(ctx context.Context, update tgbotapi.Update) bool {
 		return IsPoll(ctx, update)
 	}
@@ -91,7 +90,7 @@ func IsMyChatMember(ctx context.Context, update tgbotapi.Update) bool {
 	return update.MyChatMember != nil
 }
 
-func MyChatMember() t.MatchFunc {
+func MyChatMember() MatchFunc {
 	return func(ctx context.Context, update tgbotapi.Update) bool {
 		return IsMyChatMember(ctx, update)
 	}
@@ -101,7 +100,7 @@ func IsChatMember(ctx context.Context, update tgbotapi.Update) bool {
 	return update.ChatMember != nil
 }
 
-func ChatMember() t.MatchFunc {
+func ChatMember() MatchFunc {
 	return func(ctx context.Context, update tgbotapi.Update) bool {
 		return IsChatMember(ctx, update)
 	}
@@ -111,7 +110,7 @@ func IsChatJoinRequest(ctx context.Context, update tgbotapi.Update) bool {
 	return update.ChatJoinRequest != nil
 }
 
-func ChatJoinRequest() t.MatchFunc {
+func ChatJoinRequest() MatchFunc {
 	return func(ctx context.Context, update tgbotapi.Update) bool {
 		return IsChatJoinRequest(ctx, update)
 	}
@@ -122,7 +121,7 @@ func IsCommand(ctx context.Context, update tgbotapi.Update) bool {
 	return ok
 }
 
-func Command(command string) t.MatchFunc {
+func Command(command string) MatchFunc {
 	return func(ctx context.Context, update tgbotapi.Update) bool {
 		return IsCommand(ctx, update) &&
 			update.Message.Command() == command
@@ -133,7 +132,7 @@ func IsCallbackQuery(ctx context.Context, update tgbotapi.Update) bool {
 	return update.CallbackQuery != nil
 }
 
-func CallbackQuery(data string) t.MatchFunc {
+func CallbackQuery(data string) MatchFunc {
 	return func(ctx context.Context, update tgbotapi.Update) bool {
 		return IsCallbackQuery(ctx, update) &&
 			update.CallbackQuery.Data == data
@@ -144,6 +143,6 @@ func IsAny(ctx context.Context, update tgbotapi.Update) bool {
 	return true
 }
 
-func Any() t.MatchFunc {
+func Any() MatchFunc {
 	return func(ctx context.Context, update tgbotapi.Update) bool { return IsAny(ctx, update) }
 }

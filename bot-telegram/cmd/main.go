@@ -12,7 +12,6 @@ import (
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/handlers"
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/templates"
 	tg "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni"
-	"github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni/defaults"
 	cfg "github.com/Enziofael/nutrigo/shared/config"
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
@@ -35,11 +34,9 @@ func main() {
 	srv.Context = context.WithValue(srv.Context, "client", clt)
 
 	{
-		srv.Logger.Config.LogUpdateDetails = false
-		srv.Logger.Config.LogUpdateDetailsOnError = false
 		srv.Apply(tg.DefaultLogging(srv), "Logger")
 
-		srv.Apply(func(ctx context.Context, update tgbotapi.Update, next tg.HandlerFunc) (status string, err *tg.BotError) {
+		srv.Apply(func(ctx context.Context, update tgbotapi.Update, next tg.HandlerFunc) (status tg.HandleStatus, err *tg.BotError) {
 			u, er := clt.GetUser(ctx, update)
 			if er != nil {
 				return tg.StatusError, tg.NewBotError(er.Error(), nil)
@@ -51,16 +48,25 @@ func main() {
 	}
 
 	{
-		callbackQuery := srv.Group(defaults.IsCallbackQuery, "callbackQ")
+		callbackQuery := srv.Group(tg.IsCallbackQuery, "callbackQ")
 
-		callbackQuery.Handle(defaults.CallbackQuery("user_usage_request"), defaults.HandlerFuncStub, "userUsage_request")
+		callbackQuery.Handle(tg.CallbackQuery("user_usage_request"), tg.HandlerFuncStub, "userUsage_request")
 	}
 	{
-		command := srv.Group(defaults.IsCommand, "command")
+		command := srv.Group(tg.IsCommand, "command")
 
-		command.Handle(defaults.Command("start"), handlers.CommandStartHandler, "start")
-		command.Handle(defaults.Command("admin"), defaults.HandlerFuncStub, "admin")
+		command.Handle(tg.Command("start"), handlers.CommandStartHandler, "start")
+		command.Handle(tg.Command("admin"), tg.HandlerFuncStub, "admin")
+
+		command.Handle(tg.Command("ok"), handlers.OkHandler, "ok")
+		command.Handle(tg.Command("warn"), handlers.WarnHandler, "warn")
+		command.Handle(tg.Command("err"), handlers.ErrHandler, "err")
+		command.Handle(tg.Command("fall"), handlers.FallHandler, "fall")
+		command.Handle(tg.Command("cust"), handlers.CustomHandler, "custom")
+		command.Handle(tg.Command("shut"), handlers.ShutdownHandler, "shutdown")
 	}
+
+	srv.Handle(tg.Any(), tg.HandlerFuncStub, "any")
 
 	srv.Start()
 }

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"time"
 
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/factories"
 	tg "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni"
@@ -9,7 +10,7 @@ import (
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
 
-func CommandStartHandler(ctx context.Context, update tgbotapi.Update) (string, *tg.BotError) {
+func CommandStartHandler(ctx context.Context, update tgbotapi.Update) (tg.HandleStatus, *tg.BotError) {
 	user, ok := ctx.Value("user").(*v1.User)
 	if !ok || user == nil {
 		user = &v1.User{
@@ -36,4 +37,32 @@ func CommandStartHandler(ctx context.Context, update tgbotapi.Update) (string, *
 	ctx.Value("bot").(*tgbotapi.BotAPI).Send(msg)
 
 	return tg.StatusOK, nil
+}
+
+func OkHandler(ctx context.Context, update tgbotapi.Update) (tg.HandleStatus, *tg.BotError) {
+	return tg.StatusOK, nil
+}
+func WarnHandler(ctx context.Context, update tgbotapi.Update) (tg.HandleStatus, *tg.BotError) {
+	return tg.StatusWarn, nil
+}
+func ErrHandler(ctx context.Context, update tgbotapi.Update) (tg.HandleStatus, *tg.BotError) {
+	return tg.StatusError, nil
+}
+func FallHandler(ctx context.Context, update tgbotapi.Update) (tg.HandleStatus, *tg.BotError) {
+	return tg.StatusFallback, nil
+}
+func CustomHandler(ctx context.Context, update tgbotapi.Update) (tg.HandleStatus, *tg.BotError) {
+	return tg.NewStatus(0b11000000, "CUST"), nil
+}
+
+func ShutdownHandler(ctx context.Context, udpate tgbotapi.Update) (tg.HandleStatus, *tg.BotError) {
+	isAdmin := ctx.Value("user").(*v1.User).Status == "admin"
+	if isAdmin {
+		go func(){
+			time.Sleep(5*time.Second)
+			ctx.Value(tg.ContextKey_Bot).(*tgbotapi.BotAPI).StopReceivingUpdates()
+		}()
+		return tg.StatusOK, nil
+	}
+	return tg.StatusWarn, nil
 }

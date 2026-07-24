@@ -1,4 +1,4 @@
-package types
+package telegroni
 
 import (
 	"context"
@@ -72,7 +72,7 @@ import (
 //
 // # Example:
 //
-//	handler := NewHandler(func(ctx context.Context, update tgbotapi.Update) (status string, err *BotError) {
+//	handler := NewHandler(func(ctx context.Context, update tgbotapi.Update) (status HandleStatus, err *BotError) {
 //		// Processing update, ctx, etc.
 //		// Defining scenario example:
 //		switch value{
@@ -179,7 +179,7 @@ func NewHandler(matcher MatchFunc, function HandlerFunc, name string) *Handler {
 //	//Used in:
 //	func (s *Server) handle()
 //	func (g *HandlerGroup) handle()
-func (h *Handler) handle(ctx context.Context, u tgbotapi.Update) (matched bool, status string, err *BotError) {
+func (h *Handler) handle(ctx context.Context, u tgbotapi.Update) (matched bool, status HandleStatus, err *BotError) {
 	if !h.MatchFunc(ctx, u) {
 		return false, StatusWarn, NewBotError(fmt.Sprintf("[Handler] %s unmatched", h.Name), nil)
 	}
@@ -430,7 +430,7 @@ func (g *HandlerGroup) Group(matcher MatchFunc, name string) *HandlerGroup {
 //
 //	//Used in:
 //	func (s *Server) handle()
-func (g *HandlerGroup) handle(ctx context.Context, u tgbotapi.Update) (matched bool, status string, err *BotError) {
+func (g *HandlerGroup) handle(ctx context.Context, u tgbotapi.Update) (matched bool, status HandleStatus, err *BotError) {
 	if !g.MatchFunc(ctx, u) {
 		return false, StatusWarn, NewBotError(fmt.Sprintf("[Group] %s: unmatched", g.Name), nil)
 	}
@@ -482,7 +482,7 @@ func (g *HandlerGroup) handle(ctx context.Context, u tgbotapi.Update) (matched b
 //
 // # Example:
 //
-//	mw := NewMiddleware(func(ctx context.Context, update tgbotapi.Update, next HandlerFunc) (status string, err *BotError){
+//	mw := NewMiddleware(func(ctx context.Context, update tgbotapi.Update, next HandlerFunc) (status HandleStatus, err *BotError){
 //			//Doing something before handling
 //
 //			//Calling next() to pass control to the next middleware (or Handler)
@@ -589,7 +589,7 @@ func NewMiddleware(function MiddlewareFunc, name string) Middleware {
 //	func (g *HandlerGroup) Apply()
 //	func (h *Handler) Apply()
 func (m Middleware) apply(function HandlerFunc) HandlerFunc {
-	return func(ctx context.Context, update tgbotapi.Update) (status string, err *BotError) {
+	return func(ctx context.Context, update tgbotapi.Update) (status HandleStatus, err *BotError) {
 		return m.MiddlewareFunc(ctx, update, function)
 	}
 }
@@ -604,21 +604,35 @@ func (m Middleware) apply(function HandlerFunc) HandlerFunc {
 type MatchFunc func(ctx context.Context, update tgbotapi.Update) bool
 
 // - HandlerFunc is the function that processes a matched update.
-type HandlerFunc func(ctx context.Context, update tgbotapi.Update) (status string, err *BotError)
+type HandlerFunc func(ctx context.Context, update tgbotapi.Update) (status HandleStatus, err *BotError)
+
+// - HandlerFuncStub is a stub handler for testing.
+func HandlerFuncStub(ctx context.Context, update tgbotapi.Update) (status HandleStatus, err *BotError) {
+	return StatusWarn, NewBotError("Stub handler matched", nil)
+}
 
 // - MiddlewareFunc is a function that wraps a handler.
 // It can execute code before and after the handler,
 // and can choose to call the next handler or not.
-type MiddlewareFunc func(ctx context.Context, update tgbotapi.Update, next HandlerFunc) (status string, err *BotError)
+type MiddlewareFunc func(ctx context.Context, update tgbotapi.Update, next HandlerFunc) (status HandleStatus, err *BotError)
 
 // - RoutingFallbackFunc process unhandled Update.
 //
 // Server calls it when no Handler matched.
-type RoutingFallbackFunc func(ctx context.Context, l *Logger, update tgbotapi.Update, status string, err *BotError)
+type RoutingFallbackFunc func(ctx context.Context, l *Logger, update tgbotapi.Update, status HandleStatus, err *BotError)
 
-const (
-	StatusError           = "ERR"
-	StatusOK              = "OK"
-	StatusWarn            = "WARN"
-	StatusRoutingFallback = "FALL"
+type HandleStatus struct {
+	code byte
+	Name string
+}
+
+func NewStatus(code byte, name string) HandleStatus {
+	return HandleStatus{code: code, Name: name}
+}
+
+var (
+	StatusOK       = HandleStatus{0b1000, "OK"} //8
+	StatusWarn     = HandleStatus{0b0100, "WARN"} //4
+	StatusError    = HandleStatus{0b0010, "ERR"} //2
+	StatusFallback = HandleStatus{0b0001, "FALL"} //1
 )

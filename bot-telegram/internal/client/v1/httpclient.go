@@ -28,7 +28,11 @@ func (c *Client) GetUser(ctx context.Context, u tgbotapi.Update) (*models.User, 
 	var user models.User
 	if err := c.inner.GET(ctx, path, &user); err != nil {
 		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 404 {
-			return nil, nil // пользователь не найден
+			return &models.User{
+				TgID:   u.Message.From.ID,
+				TgTag:  u.Message.From.UserName,
+				Status: "unknown",
+			}, nil // пользователь не найден
 		}
 		return nil, fmt.Errorf("get user by telegram id %d: %w", tgID, err)
 	}

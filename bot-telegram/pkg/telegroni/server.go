@@ -47,13 +47,14 @@
 // # See also:
 //
 //	package defaults // for pre-made matchers, functions, middlewares
-package types
+package telegroni
 
 import (
 	"context"
 	"fmt"
 	"time"
 
+	_ "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni/internal/os"
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
 
@@ -237,7 +238,7 @@ func (cfg ServerConfig) SetAllowedUpdates(allowed []string) {
 //	type Server struct
 //	type Route struct
 type Route interface {
-	handle(ctx context.Context, u tgbotapi.Update) (matched bool, status string, err *BotError)
+	handle(ctx context.Context, u tgbotapi.Update) (matched bool, status HandleStatus, err *BotError)
 }
 
 // ======================== TYPE =========================
@@ -538,7 +539,7 @@ const ContextKey_TimestampRecieved = "timestamp_recieved" // UNDOCKED
 //	func (s *Server) Start()
 func (s *Server) handle(ctx context.Context, u tgbotapi.Update) {
 	var matched bool
-	var status string
+	var status HandleStatus
 	var err *BotError
 
 	ctx = context.WithValue(ctx, ContextKey_Path, "")
@@ -562,7 +563,10 @@ func (s *Server) handle(ctx context.Context, u tgbotapi.Update) {
 //
 //	func (s *Server) Start()
 //	type Server struct
-func defaultRoutingFallback(ctx context.Context, l *Logger, u tgbotapi.Update, status string, err *BotError) {
-	l.Err(NewLog(ctx, u, StatusRoutingFallback, err, time.Now(), time.Now()))
-	//l.WriteErr("Routing failed - fallback called.\n" + formatUpdateDetails(reflect.ValueOf(u), 0))
+func defaultRoutingFallback(ctx context.Context, l *Logger, u tgbotapi.Update, status HandleStatus, err *BotError) {
+	hints.Do(l.printHint)
+	log := NewLog(ctx, u, StatusFallback, err, time.Now(), time.Now())
+	l.Log(log)
+	l.Err(log)
+	l.FileWrite(log)
 }

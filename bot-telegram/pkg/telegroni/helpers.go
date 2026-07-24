@@ -1,8 +1,9 @@
-package types
+package telegroni
 
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync/atomic"
 	"unicode/utf8"
@@ -114,6 +115,7 @@ func padLeft(s string, length int) string {
 	pad := strings.Repeat(" ", length-slen)
 	return fmt.Sprintf("%s%s", pad, s)
 }
+
 func padRight(s string, length int) string {
 	slen := utf8.RuneCountInString(s)
 	if slen > length {
@@ -127,4 +129,12 @@ func appendPath(ctx context.Context, path string) context.Context {
 	oldPath := ctx.Value(ContextKey_Path).(string)
 	newPath := fmt.Sprintf("%s/%s", oldPath, path)
 	return context.WithValue(ctx, ContextKey_Path, newPath)
+}
+
+func isTerminal() bool {
+	stat, err := os.Stdout.Stat()
+	if err != nil {
+		return false
+	}
+	return (stat.Mode() & os.ModeCharDevice) != 0
 }
