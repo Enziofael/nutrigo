@@ -70,7 +70,7 @@ func main() {
 		command := srv.Group(tg.IsCommand, "command")
 		command.Apply(middlewares.VerifyUsagePermission, "usagePermissionVerify")
 
-		command.Handle(tg.Command("start"), handlers.CommandStartHandler, "start")
+		command.Handle(tg.Command("start"), tg.HandlerFuncStub, "start")
 		command.Handle(tg.Command("admin"), tg.HandlerFuncStub, "admin")
 
 		command.Handle(tg.Command("ok"), handlers.OkHandler, "ok")
@@ -79,6 +79,38 @@ func main() {
 		command.Handle(tg.Command("fall"), handlers.FallHandler, "fall")
 		command.Handle(tg.Command("cust"), handlers.CustomHandler, "custom")
 		command.Handle(tg.Command("shut"), handlers.ShutdownHandler, "shutdown")
+	}
+	{
+		food := srv.Group(tg.IsAny, "food")
+		food.Apply(middlewares.VerifyUsagePermission, "usagePermissionVerify")
+		food.Handle(tg.Text("🍏"), tg.HandlerFuncStub, "food", tg.NewMiddleware(middlewares.DeleteSourceMessage, ""))
+	}
+	{
+		training := srv.Group(tg.IsAny, "training")
+		training.Apply(middlewares.VerifyUsagePermission, "usagePermissionVerify")
+		training.Handle(tg.Text("🏋️"), handlers.TrainingMenu, "training", tg.NewMiddleware(middlewares.DeleteSourceMessage, ""))
+		training.Handle(tg.CallbackQuery("T"), handlers.TrainingMenuEdit, "training")
+		training.Handle(func(ctx tg.Context, update tgbotapi.Update) bool {
+			return strings.HasPrefix(update.CallbackData(), "TEP")
+		}, handlers.TrainingMenu_TEP, "TEP")
+		training.Handle(func(ctx tg.Context, update tgbotapi.Update) bool {
+			return strings.HasPrefix(update.CallbackData(), "TPP")
+		}, handlers.TrainingMenu_TPP, "TPP")
+	}
+	{
+		calendar := srv.Group(tg.IsAny, "calendar")
+		calendar.Apply(middlewares.VerifyUsagePermission, "usagePermissionVerify")
+		calendar.Handle(tg.Text("📆"), tg.HandlerFuncStub, "calendar", tg.NewMiddleware(middlewares.DeleteSourceMessage, ""))
+	}
+	{
+		profile := srv.Group(tg.IsAny, "profile")
+		profile.Apply(middlewares.VerifyUsagePermission, "usagePermissionVerify")
+		profile.Handle(tg.Text("👤"), tg.HandlerFuncStub, "profile", tg.NewMiddleware(middlewares.DeleteSourceMessage, ""))
+	}
+	{
+		settings := srv.Group(tg.IsAny, "settings")
+		settings.Apply(middlewares.VerifyUsagePermission, "usagePermissionVerify")
+		settings.Handle(tg.Text("⚙️"), tg.HandlerFuncStub, "settings", tg.NewMiddleware(middlewares.DeleteSourceMessage, ""))
 	}
 
 	srv.Handle(tg.Any(), tg.HandlerFuncStub, "Any stub", tg.NewMiddleware(middlewares.VerifyUsagePermission, "usagePermissionVerify"))

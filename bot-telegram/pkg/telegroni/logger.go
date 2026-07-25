@@ -321,21 +321,7 @@ func getDetails(u tgbotapi.Update, err *BotError) string {
 }
 
 func getUsername(u tgbotapi.Update) string {
-	res := ""
-	switch {
-	case u.Message != nil:
-		res = u.Message.From.UserName
-	case u.EditedMessage != nil:
-		res = u.EditedMessage.From.UserName
-	case u.ChannelPost != nil:
-		res = u.ChannelPost.Chat.UserName
-	case u.EditedChannelPost != nil:
-		res = u.EditedChannelPost.From.UserName
-	case u.CallbackQuery != nil && u.CallbackQuery.Message != nil:
-		res = u.CallbackQuery.Message.From.UserName
-	default:
-		res = fmt.Sprintf("getUsernameError %#v", u)
-	}
+	res := u.SentFrom().UserName
 	return res
 }
 

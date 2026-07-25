@@ -77,7 +77,7 @@ func NewUsageRequestReplyMarkup(tgId int64) (a.InlineKeyboardMarkup, *tg.BotErro
 	if err != nil {
 		return a.InlineKeyboardMarkup{}, tg.NewBotError(err.Error(), nil)
 	}
-	textBlock, err := tmplManager.RenderHTML("RepeatUsageRequestReplyMarkup_textBlock", nil)
+	textBlock, err := tmplManager.RenderHTML("NewUsageRequestReplyMarkup_textBlock", nil)
 	if err != nil {
 		return a.InlineKeyboardMarkup{}, tg.NewBotError(err.Error(), nil)
 	}
@@ -158,6 +158,9 @@ func NotifyUsageRequestConfirmed(ctx tg.Context, tgID int64) (a.MessageConfig, *
 	}
 
 	msg := a.NewMessage(tgID, text)
+
+	kb := MainMenuReplyMarkup()
+	msg.ReplyMarkup = kb
 
 	msg.ParseMode = "HTML"
 

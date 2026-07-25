@@ -4,13 +4,13 @@ import (
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
 
-func IsMessage(ctx Context, update tgbotapi.Update) bool {
-	return update.Message != nil && !update.Message.IsCommand()
+func IsText(ctx Context, update tgbotapi.Update) bool {
+	return update.Message != nil && update.Message.Text != "" && !update.Message.IsCommand()
 }
 
-func Message(s string) MatchFunc {
+func Text(s string) MatchFunc {
 	return func(ctx Context, update tgbotapi.Update) bool {
-		return IsMessage(ctx, update) && update.Message.Text == s
+		return IsText(ctx, update) && update.Message.Text == s
 	}
 }
 

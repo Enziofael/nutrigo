@@ -7,19 +7,6 @@ import (
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
 
-func MainMenu(update tgbotapi.Update, user *v1.User) tgbotapi.MessageConfig {
-	text, err := tmplManager.RenderHTML("MainMenu", nil)
-	if err != nil {
-		log.Panicf("Render error: %v", err)
-		text = err.Error()
-	}
-
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, text)
-	msg.ParseMode = "HTML"
-
-	return msg
-}
-
 func YouWasBanned(update tgbotapi.Update, user *v1.User) tgbotapi.MessageConfig {
 	text, err := tmplManager.RenderHTML("YouWasBanned", nil)
 	if err != nil {
