@@ -41,3 +41,38 @@ func (s *UserService) Create(ctx context.Context, req models.UserCreateRequest) 
 
 	return s.repo.Create(ctx, req)
 }
+
+func (s *UserService) PatchStatus(ctx context.Context, tgID int64, req models.UserStatusUpdateRequest) (*models.User, error) {
+	if tgID == 0 {
+		return nil, TgIdRequired
+	}
+	if !models.ValidateStatus(req.Status) {
+		return nil, ErrInvalidStatus
+	}
+
+	existing, err := s.repo.GetByTgId(ctx, tgID)
+	if err != nil {
+		return nil, err
+	}
+	if existing == nil {
+		return nil, repository.ErrUserNotFound
+	}
+
+	return s.repo.PatchStatus(ctx, tgID, req)
+}
+
+func (s *UserService) Delete(ctx context.Context, tgID int64) error {
+	if tgID == 0 {
+		return TgIdRequired
+	}
+
+	existing, err := s.repo.GetByTgId(ctx, tgID)
+	if err != nil {
+		return err
+	}
+	if existing == nil {
+		return repository.ErrUserNotFound
+	}
+
+	return s.repo.Delete(ctx, tgID)
+}

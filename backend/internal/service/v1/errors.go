@@ -4,3 +4,4 @@ import "errors"
 
 var TgIdRequired = errors.New("tg_id is required")
 var TgTagRequired = errors.New("tg_tag is required")
+var ErrInvalidStatus = errors.New("status is invalid")

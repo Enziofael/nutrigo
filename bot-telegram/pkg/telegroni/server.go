@@ -1,12 +1,21 @@
-// Package telegroni provides a flexible routing system for Telegram bots.
+// - telegroni package provides a flexible routing system for Telegram bots
+// in gin-gonic like style
+//
 // It allows registering routes with match conditions and handlers,
 // grouping routes, and nesting groups for complex routing logic.
 //
-// Example:
+// # Key Components:
+//
+//   - **Server** — main entry point for routing.
+//   - **HandlerGroup** — groups routes with shared match conditions.
+//   - **Handler** — individual route handler.
+//   - **Middleware** — wraps handlers for cross-cutting concerns.
+//
+// # Example:
 //
 //	import (
 //		tgbot "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni"
-//		tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+//		tgbotapi "github.com/OvyFlash/telegram-bot-api"
 //	)
 //
 //	func main() {
@@ -25,312 +34,538 @@
 //		srv.Start()
 //	}
 //
-//	func handleStart(ctx context.Context, update tgbotapi.Update) {
+//	func handleStart(ctx Context, update tgbotapi.Update) {
 //		// Do something
 //	}
 //
-//	func LoggerMiddleware(ctx context.Context, update tgbotapi.Update, next tgbot.HandlerFunc) {
+//	func LoggerMiddleware(ctx Context, update tgbotapi.Update, next tgbot.HandlerFunc) {
 //		log.Println("Before")
 //		next(ctx, update)
 //		log.Println("After")
 //	}
+//
+// # See also:
+//
+//	package defaults // for pre-made matchers, functions, middlewares
 package telegroni
 
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	_ "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni/internal/os"
+	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
 
-// ============================================
-// Route
-// ============================================
-
-// Route defines the common interface for both single handlers and handler groups.
-// It allows the server to process routes uniformly without knowing their internal structure.
-type Route interface {
-	// handle processes the update and returns true if the route matched and handled it.
-	// If false, the server continues to the next route in the chain.
-	handle(ctx context.Context, u tgbotapi.Update) (matched bool, status string, err *BotError)
-	// Name returns the name of the route for logging and debugging.
-	Name() string
-}
-
-// MatchFunc determines whether a route or group should handle a given update.
-type MatchFunc func(ctx context.Context, update tgbotapi.Update) bool
-
-// HandlerFunc is the function that processes a matched update.
-type HandlerFunc func(ctx context.Context, update tgbotapi.Update) (status string, err *BotError)
-
-// MiddlewareFunc is a function that wraps a handler.
-// It can execute code before and after the handler,
-// and can choose to call the next handler or not.
-type MiddlewareFunc func(ctx context.Context, update tgbotapi.Update, next HandlerFunc) (status string, err *BotError)
-
-// ============================================
-// Middleware
-// ============================================
-
-// Middleware represents a middleware with a name for logging.
-type Middleware struct {
-	middlewareFunc MiddlewareFunc
-	name           string
-}
-
-// NewMiddleware creates a new middleware.
-func NewMiddleware(mwf MiddlewareFunc, name string) Middleware {
-	return Middleware{
-		middlewareFunc: mwf,
-		name:           name,
-	}
-}
-
-// apply wraps a handler with the middleware.
-func (m Middleware) apply(handler HandlerFunc) HandlerFunc {
-	return func(ctx context.Context, update tgbotapi.Update) (status string, err *BotError) {
-		return m.middlewareFunc(ctx, update, handler)
-	}
-}
-
-// Name returns the middleware name.
-func (m Middleware) Name() string {
-	return m.name
-}
-
-// ============================================
-// Handler
-// ============================================
-
-// Handler represents a single route with a match condition and a handler function.
-// When the match condition returns true, the handler is executed asynchronously.
-type Handler struct {
-	handlerFunc HandlerFunc
-	matchFunc   MatchFunc
-	name        string
-}
-
-// NewHandler creates a new Handler with the given match and handler functions.
-func NewHandler(hf HandlerFunc, mf MatchFunc, name string) *Handler {
-	return &Handler{
-		handlerFunc: hf,
-		matchFunc:   mf,
-		name:        name,
-	}
-}
-
-// Name returns the handler name.
-func (h *Handler) Name() string {
-	return h.name
-}
-
-// handle checks the match condition and executes the handler if it matches.
-// Returns true if the condition was satisfied and routing was successful (handler may still be running).
-func (h *Handler) handle(ctx context.Context, u tgbotapi.Update) (matched bool, status string, err *BotError) {
-	if !h.matchFunc(ctx, u) {
-		return false, StatusWarn, NewBotError(fmt.Sprintf("[Handler] %s unmatched", h.name), nil)
-	}
-	status, err = h.handlerFunc(ctx, u)
-	return true, status, err
-}
-
-// ============================================
-// HandlerGroup
-// ============================================
-
-// HandlerGroup is a collection of routes that share a common match condition.
-// If the group's condition matches, it delegates routing to its child routes
-// in the order they were registered. The first route that handles the update
-// stops further processing within the group.
+// ======================= INDEX =========================
+//          You can navigate by searching REGION
+// =======================================================
+//	Arguments are omitted for brevity
 //
-// HandlerGroups can be nested to create hierarchical routing structures.
-type HandlerGroup struct {
-	matchFunc   MatchFunc
-	routes      []Route
-	middlewares []Middleware
-	name        string
-}
+//	1. type ServerConfig struct
+//	- Exported
+//		- func NewConfig(...) *ServerConfig
+//		- func (cfg *ServerConfig) SetLimit(...)
+//		- func (cfg *ServerConfig) SetTimeout(...)
+//		- func (cfg *ServerConfig) SetAllowedUpdates(...)
+//
+//	2. type Route interface
+//
+//	3. type Server struct
+//	- Exported
+//		- func New(...) *Server
+//		- func (s *Server) Apply(...)
+//		- func (s *Server) Handle(...)
+//		- func (s *Server) Group(...) *HandlerGroup
+//		- func (s *Server) Start() *BotError
+//		- const ContextKey_Bot
+//		- const ContextKey_TimestampRouted
+//		- const ContextKey_Path
+//	- Unexported
+//		- func (s *Server) handle(...)
+//		- func defaultRoutingFallback(...)
+//
+// =======================================================
 
-// NewHandlerGroup creates a new HandlerGroup with the given match condition.
-func NewHandlerGroup(mf MatchFunc, name string) *HandlerGroup {
-	return &HandlerGroup{
-		matchFunc:   mf,
-		routes:      make([]Route, 0),
-		middlewares: make([]Middleware, 0),
-		name:        name,
-	}
-}
+// ======================== TYPE =========================
+// REGION               ServerConfig
+// =======================================================
 
-// Name returns the group name.
-func (g *HandlerGroup) Name() string {
-	return g.name
-}
-
-// Apply adds a middleware to the group.
-func (g *HandlerGroup) Apply(mw Middleware) {
-	g.middlewares = append(g.middlewares, mw)
-}
-
-// Use adds a new handler to the group's routing chain.
-// Routes are processed in the order they are registered.
-func (g *HandlerGroup) Use(mf MatchFunc, hf HandlerFunc, name string) {
-	//log.Printf("[Group] Adding handler: %s -> %s", g.name, name)
-
-	wrapped := hf
-	for i := len(g.middlewares) - 1; i >= 0; i-- {
-		wrapped = g.middlewares[i].apply(wrapped)
-	}
-
-	g.routes = append(g.routes, NewHandler(wrapped, mf, name))
-}
-
-// Group creates a new nested group and returns a pointer to it.
-// The pointer allows modification of the nested group after creation.
-// Routes are processed in the order they are registered.
-func (g *HandlerGroup) Group(mf MatchFunc, name string) *HandlerGroup {
-	//log.Printf("[Group] Adding nested group: %s -> %s", g.name, name)
-
-	newGroup := NewHandlerGroup(mf, name)
-
-	// Copy parent's middlewares to the new group
-	newGroup.middlewares = make([]Middleware, len(g.middlewares))
-	copy(newGroup.middlewares, g.middlewares)
-
-	g.routes = append(g.routes, newGroup)
-	return newGroup
-}
-
-// handle checks the group's condition and, if true, processes child routes
-// sequentially. Stops at the first child route that handles the update.
-// Returns true if any child route handled the update.
-func (g *HandlerGroup) handle(ctx context.Context, u tgbotapi.Update) (matched bool, status string, err *BotError) {
-	if !g.matchFunc(ctx, u) {
-		return false, StatusWarn, NewBotError(fmt.Sprintf("[Group] %s: unmatched", g.name), nil)
-	}
-
-	for _, route := range g.routes {
-		var innerErr *BotError
-		matched, status, innerErr = route.handle(ctx, u)
-		if innerErr != nil {
-			err = NewBotError("", innerErr)
-		}
-		if matched {
-			return true, status, err
-		}
-	}
-	return false, StatusWarn, NewBotError(fmt.Sprintf("[Group] %s: no matched handler", g.name), err)
-}
-
-// ============================================
-// Server
-// ============================================
-
-// Server manages the Telegram bot's main event loop and routing system.
-// It holds the routing chain and the bot instance, orchestrating the
-// entire update handling process.
-type Server struct {
-	Context     context.Context
-	routes      []Route
-	middlewares []Middleware
-}
-
-// ServerConfig configures the server.
+// - ServerConfig is a struct for all values
+// that are necessary for server configuration
+//
+// # It is used for Server creation
+//
+// # Related:
+//
+//	//Used in:
+//	func New()
+//	func defaults.Default()
+//
+// # See also:
+//
+//	func NewConfig()
+//
+// # Methods:
 type ServerConfig struct {
-	BotConfig BotConfig
+	BotApiToken string
+	ApiConfig   tgbotapi.UpdateConfig
 }
 
-// BotConfig configures the bot.
-type BotConfig struct {
-	APIToken string
-}
+// ====================== EXPORTED ======================
 
-// New creates a new Server instance with the given config.
-func New(cfg ServerConfig) (*Server, *BotError) {
-	bot, err := tgbotapi.NewBotAPI(cfg.BotConfig.APIToken)
-	if err != nil {
-		return nil, NewBotError("Bot Creation failed", NewBotError(err.Error(), nil))
+// - NewConfig() returns ServerConfig for creating a server.
+//
+// - BotApiToken is a token to acces your bot.
+// You can find it in @BotFather.
+// Revoke it and use a new one if you think it was сompromised
+//
+// It is HIGHLY RECOMMENDED NOT CREATE SERVER CONFIG MANUALLY
+// using a strict literal because
+//
+// - empty BotApiToken will cause panic
+// - invalid ApiConfig may impair server functionality
+// which may cause losing updates.
+//
+// # ALWAYS USE NewConfig() unless you have a huge and specific reason not to
+//
+// You can manually set:
+//
+// - limit to control server load
+// - timeout to control amount of queries to the Telegram API
+// - allowed updates to control which types you want to get from Telegram API
+//
+// # Also you can set allowed updates
+//
+// # Related:
+//
+//	//Uses::
+//	type ServerConfig struct
+//
+// # See also:
+//
+//	func (cfg *ServerConfig) SetLimit()
+//	func (cfg *ServerConfig) SetTimeout()
+//	func (cfg *ServerConfig) SetAllowedUpdates()
+func NewConfig(BotApiToken string) ServerConfig {
+	return ServerConfig{
+		BotApiToken: BotApiToken,
+		ApiConfig: tgbotapi.UpdateConfig{
+			Offset:         0,
+			Limit:          100,
+			Timeout:        30,
+			AllowedUpdates: []string{},
+		},
 	}
+}
 
-	ctx := context.Background()
-	ctx = context.WithValue(ctx, "bot", bot)
+// - SetLimit() changes polling limit in ServerConfig
+//
+// - limit is a max amount of updates Telegram API will send at once.
+//
+// Default value equals to 100 (bot default buffer size)
+//
+// # Similar:
+//
+//	func (cfg *ServerConfig) SetTimeout()
+//	func (cfg *ServerConfig) SetAllowedUpdates()
+func (cfg ServerConfig) SetLimit(limit int) {
+	cfg.ApiConfig.Limit = limit
+}
 
+// - SetTimeout() changes polling timeout in ServerConfig
+//
+// - timeout defines how long will Telegram API will wait for Updates
+// if currently there're no new Updates before sending response
+//
+// # Default value equals to 30
+//
+// # Similar:
+//
+//	func (cfg *ServerConfig) SetLimit()
+//	func (cfg *ServerConfig) SetAllowedUpdates()
+func (cfg ServerConfig) SetTimeout(timeout int) {
+	cfg.ApiConfig.Timeout = timeout
+}
+
+// - SetAllowedUpdates() changes polling filter in ServerConfig
+//
+// - allowed defines which Update's types Telegram API will send
+//
+// Default value equals is empty (all updates)
+//
+// Change carefully so that you don't miss the updates you want to process.
+// Use constants from tgbotapi that starts with "UpdateType..."
+//
+// # Example:
+//
+//	cfg.SetAllowedUpdates([]string{
+//		tgbotapi.UpdateTypeCallbackQuery,
+//		tgbotapi.UpdateTypeMessage,
+//	})
+//
+// # Similar:
+//
+//	func (cfg *ServerConfig) SetLimit()
+//	func (cfg *ServerConfig) SetAllowedUpdates()
+func (cfg ServerConfig) SetAllowedUpdates(allowed []string) {
+	cfg.ApiConfig.AllowedUpdates = allowed
+}
+
+// ===================== INTERFACE =======================
+// REGION                  Route
+// =======================================================
+
+// - Route defines the common interface for both Handlers and HandlerGroups
+//
+// It allows the Server to process routint uniformly without knowing if it's a Handler or a HandlerGroup,
+// considering them as identical routing nodes in Server's own handle() function.
+//
+// Handler's and HandlerGroup's handle() implementations
+// first process mathcing logic
+//
+// In the case of Handler,
+// after matching it calls wrapped in MiddlewareFuncs (if any) HandlerFunc.
+//
+// In the case of HandlerGroup,
+// after matching it starts routing inside nested Routes.
+//
+// # See also:
+//
+//	type Middleware struct
+//	type HandlerGroup struct
+//	type Server struct
+//	type Route struct
+type Route interface {
+	handle(ctx Context, u tgbotapi.Update) (matched bool, status HandleStatus, err *BotError)
+}
+
+// ======================== TYPE =========================
+// REGION                  Server
+// =======================================================
+
+// - Server is a main struct for all Routes, global Middlewares
+// and running Bot's server
+//
+// It manages main loop by getting Updates and passing them to
+// Routes recursively in order until one of the Handlers will match.
+// If none of them matched it will pass Update to the
+// RoutingFallbackFunc.
+//
+// Server's logic is based on consecutive stages:
+//
+// 1. Routing tree registration.
+//
+// 2. Running server's loop.
+//
+// For each recieved Update server will:
+//
+// 2.1. Route it based on routing tree
+//
+// 2.2. Handle it by matched Handler asynchronously
+//
+// Routing tree consists of Server, HandlerGroups and Handlers,
+// where Server is the root from where routing starts,
+// HandlerGroups are brunches that groups similar handlers with common match logic
+// and Handlers are leaves where Update starts its processing.
+// It can be build by Group() and Handle() functions,
+// wrapping whole tree, branche or leaf with necessary Middlewares.
+//
+// Finding matching Handler works by In-depth-first traversal
+// by adding order based on MatchFuncs.
+//
+// Server can safely not have any matching Handler
+// if specified RoutingFallbackFunc doesn't say the opposite,
+// but it exactly means that user won't get any response and Update
+// won't be processed.
+//
+// It is RECOMMENDED to add a Handler with Any() as the last one added
+// or add a global Middleware that will handle unrouted Update.
+// (for example logging unhandled Update's details).
+//
+// You can use defaults.Default() to create a Server with pre-applied default
+// logger and panic recovery Middlewares.
+//
+// Or you can use New() to create a blank Server.
+//
+// You can find simple example in the package doc.
+//
+// # Related:
+//
+//	//Implements:
+//	type Route interface
+//
+//	//Uses:
+//	type Route interface
+//	type Middleware struct
+//
+// # Similar:
+//
+//	type Handler struct
+//	type Middleware struct
+//	type Server struct
+//	type Route interface
+//
+// # See also:
+//
+//	type BotError struct
+//
+//	package defaults // for  Any() function, which return MatchFunc always returning true,
+//					 // Default() and other default functions
+//
+// # Methods:
+type Server struct {
+	Context         Context
+	Routes          []Route
+	Middlewares     []Middleware
+	RoutingFallback RoutingFallbackFunc
+	Config          ServerConfig
+	Logger          *Logger //UNDOCKED
+}
+
+// ====================== EXPORTED ======================
+
+// - New() creates new Server, creates a BotAPI, adds it to the Context
+// and returns a pointer to it and BotError if something went with the BotAPI.
+//
+// - config contains all the values for the server configuration.
+//
+// You CAN create Server using a struct literal directly:
+//
+//	srv := Server{Context: context.Background(), Routes: make([]Route, 0), Middlewares: make([]Middleware, 0),}
+//
+// However, this is NOT RECOMMENDED
+// because
+// - if at least one of the Context, Routes, Config or Middlewares are nil n
+// it will cause panic
+// - if Config doesn't contain bot api token
+// it will cause panic
+//
+// Use New() or defaults.Default() unless you have a specific reason not to
+// (e.g., performance-critical code where you're certain name is unnecessary
+// and internal calls are a concern).
+//
+// # Related:
+//
+//	//Uses:
+//	type ServerConfig struct
+//
+// # Similar:
+//
+//	func NewHandler()
+//	func NewMiddleware()
+//	func NewHandlerGroup()
+func New(config ServerConfig) *Server {
 	return &Server{
-		Context:     ctx,
-		routes:      make([]Route, 0),
-		middlewares: make([]Middleware, 0),
-	}, nil
+		//Root context. Contains *BotAPI and Timestamp when Update was routed
+		Context:         Context{C: context.Background()},
+		Routes:          make([]Route, 0),
+		Middlewares:     make([]Middleware, 0),
+		RoutingFallback: defaultRoutingFallback,
+		Config:          config,
+		Logger:          NewLogger(),
+	}
 }
 
-// Apply adds a global middleware to the server.
-func (s *Server) Apply(mw Middleware) {
-	s.middlewares = append(s.middlewares, mw)
+// - Apply() appends a new global Middleware to Server
+//
+// - function contains all Middleware's logic.
+//
+// - name is primarily used for logging and debugging.
+//
+// All Middlewares will be applied recursively to ALL Handlers
+// by apply(), that will wrap their own HandleFunctions.
+//
+// # Example:
+//
+//	s.Apply(myMiddlewareFunc, "myMiddleware")
+//
+// # Related:
+//
+//	//Uses:
+//	type MiddlewareFunc func()
+//	func NewMiddleware()
+//
+// # Similar:
+//
+//	func (s *Server) Apply()
+//
+// # See also:
+//
+//	func NewHandler() // for more details about name
+func (s *Server) Apply(function MiddlewareFunc, name string) {
+	s.Middlewares = append(s.Middlewares, NewMiddleware(function, name))
 }
 
-// Use adds a new handler to the server's routing chain.
-// Routes are processed in the order they are registered.
-func (s *Server) Use(mf MatchFunc, hf HandlerFunc, name string) *BotError {
-	wrapped := hf
-	for i := len(s.middlewares) - 1; i >= 0; i-- {
-		wrapped = s.middlewares[i].apply(wrapped)
+// - Handle() adds a new Handler to Server's Routes
+// and wraps Handler with Server's Middlewares and provided
+// local middlewares
+//
+// - matcher contains logic to define if this Handler should process Update.
+//
+// - function contains all Handler's logic.
+//
+// - name is primarily used for logging and debugging.
+//
+// - middlewares are intended to apply to this Handler only.
+//
+// # Example:
+//
+//	s.Handle(myMatcherFunc, myHandlerFunc, "myHandler",
+//		someMiddleware1, someMiddleware2
+//	)
+//
+// # Related:
+//
+//	//Uses:
+//	type MatchFunc func()
+//	type HandlerFunc func()
+//	type Middleware struct
+//	func NewHandler()
+//
+// # Similar:
+//
+//	func (s *Server) Handle()
+//
+// # See also:
+//
+//	func NewHandler() // for more details about name
+func (s *Server) Handle(matcher MatchFunc, function HandlerFunc, name string, middlewares ...Middleware) {
+	wrapped := function
+	for i := len(middlewares) - 1; i >= 0; i-- {
+		wrapped = middlewares[i].apply(wrapped)
+	}
+	for i := len(s.Middlewares) - 1; i >= 0; i-- {
+		wrapped = s.Middlewares[i].apply(wrapped)
 	}
 
-	s.routes = append(s.routes, NewHandler(wrapped, mf, name))
-	return nil
+	s.Routes = append(s.Routes, NewHandler(matcher, wrapped, name))
 }
 
-// Group creates a new group and returns a pointer to it.
-// The pointer allows modification of the group after creation.
-// Routes are processed in the order they are registered.
-func (s *Server) Group(mf MatchFunc, name string) *HandlerGroup {
-	newGroup := NewHandlerGroup(mf, name)
+// - Group() adds a new HandlerGroup to Server's Routes
+// and adds all Server's Middlewares to it,
+// then returns a pointer to it
+//
+// - matcher contains logic to define if this HandlerGroup should process Update.
+//
+// - name is primarily used for logging and debugging.
+//
+// In server's main loop if thiw new HandlerGroup will match,
+// it will start passing processing to each its
+// Route in order they were added, until one of Handlers will match
+// or none of them (then routing passes to the Route next to HandlerGroup)
+//
+// # Example:
+//
+//	grp := s.Group(myMatcherFunc, "myGroup")
+//
+// # Related:
+//
+//	//Uses:
+//	type MatchFunc func()
+//	func NewGroup()
+//
+// # See also:
+//
+//	func NewHandlerGroup() // for more details about name
+//
+// # Similar:
+//
+//	func (s *Server) Group()
+func (s *Server) Group(matcher MatchFunc, name string) *HandlerGroup {
+	newGroup := NewHandlerGroup(matcher, name)
 
-	newGroup.middlewares = make([]Middleware, len(s.middlewares))
-	copy(newGroup.middlewares, s.middlewares)
+	newGroup.Middlewares = make([]Middleware, len(s.Middlewares))
+	copy(newGroup.Middlewares, s.Middlewares)
 
-	s.routes = append(s.routes, newGroup)
+	s.Routes = append(s.Routes, newGroup)
 	return newGroup
 }
 
-// handle processes a single update through the routing chain.
-func (s *Server) handle(ctx context.Context, u tgbotapi.Update) {
-	var (
-		matched bool
-	)
-	for _, route := range s.routes {
-		if matched, _, _ = route.handle(ctx, u); matched {
-			return
-		}
-	}
-	if !matched {
-		LogGlobalError(ctx, u)
-	}
-}
-
-// Start begins the main event loop, polling Telegram for updates.
+// - Start() begins the main loop, polling Telegram for updates.
 // It processes each update through the routing chain sequentially.
 // The function blocks until the bot's update channel is closed.
 func (s *Server) Start() *BotError {
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 30
+	bot, err := tgbotapi.NewBotAPI(s.Config.BotApiToken)
+	if err != nil {
+		return NewBotError("Bot Creation failed", NewBotError(err.Error(), nil))
+	}
+	s.Context.Bot = bot
 
-	updates := s.Context.Value("bot").(*tgbotapi.BotAPI).GetUpdatesChan(u)
-	
+	u := s.Config.ApiConfig
+
+	s.Logger.Write("Info: Bot server start succesful")
+	s.Logger.Write(fmt.Sprintf("      Authorized on account @%s", bot.Self.UserName))
+	s.Logger.Write(fmt.Sprintf("      CanJoinGroups %t", bot.Self.CanJoinGroups))
+	s.Logger.Write(fmt.Sprintf("      CanReadAllGroupMessages %t", bot.Self.CanReadAllGroupMessages))
+	s.Logger.Write(fmt.Sprintf("      SupportsInlineQueries %t\n", bot.Self.SupportsInlineQueries))
+	s.Logger.Write(time.Now().Format("2006/01/02 - 15:04:05 ") + "Starting polling updates from telegram\n")
+
+	updates := bot.GetUpdatesChan(u)
+
 	for update := range updates {
-		ctx := context.WithValue(s.Context, "timestamp_recieved", time.Now())
-		go s.handle(ctx, update)
+		s.Context.TimestampRecieved = time.Now()
+		go s.handle(s.Context, update)
 	}
 
 	return nil
 }
 
-// ============================================
-// Stubs for testing
-// ============================================
+// - ContextKey_Bot for getting bot from context
+const ContextKey_Bot = "bot"
 
-// HandlerFuncStub is a stub handler for testing.
-func HandlerFuncStub(ctx context.Context, update tgbotapi.Update) (status string, err *BotError) {
-	log.Printf("[Stub] Handler called for update: %v", update.UpdateID)
-	return StatusOK, nil
+// - ContextKey_TimestampRouted for getting timestamp when update was routed from context
+const ContextKey_TimestampRouted = "timestamp_routed"
+
+// - ContextKey_Bot for getting routed update's route path from context
+const ContextKey_Path = "route_path"
+
+const ContextKey_TimestampRecieved = "timestamp_recieved" // UNDOCKED
+
+// ===================== UNEXPORTED ======================
+
+// - handle() starts passing processing to each Server's
+// Route recursively in turn they were added, until one of Handlers will match
+// or none of them.
+//
+// If no Handler matched update passing to the Server's RoutingFallbackFunc.
+//
+// It is used internally in the server's main loop.
+//
+// # Related:
+//
+//	//Used in:
+//	func (s *Server) Start()
+func (s *Server) handle(ctx Context, u tgbotapi.Update) {
+	var matched bool
+	var status HandleStatus
+	var err *BotError
+
+	for _, route := range s.Routes {
+		matched, status, err = route.handle(ctx, u)
+		if matched {
+			break
+		}
+	}
+	if !matched {
+		s.RoutingFallback(ctx, s.Logger, u, status, err)
+	}
+}
+
+// - defaultRoutingFallback() is a default RoutingFallbackFunc
+//
+// # It logs update details, error and status
+//
+// # See also:
+//
+//	func (s *Server) Start()
+//	type Server struct
+func defaultRoutingFallback(ctx Context, l *Logger, u tgbotapi.Update, status HandleStatus, err *BotError) {
+	hints.Do(l.printHint)
+	ctx.TimestampHandled = time.Now()
+	log := NewLog(ctx, u, StatusFallback, err)
+	l.Log(log)
+	l.Err(log)
+	l.FileWrite(log)
 }

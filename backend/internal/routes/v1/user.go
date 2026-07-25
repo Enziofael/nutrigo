@@ -22,4 +22,10 @@ func RegisterUserRoutes(group *gin.RouterGroup, s *server.Server) {
 	{
 		user.POST("/", handler.Create)
 	}
+	{
+		user.PATCH("/:tg_id", handler.PatchStatus)
+	}
+	{
+		user.DELETE("/:tg_id", handler.Delete)
+	}
 }

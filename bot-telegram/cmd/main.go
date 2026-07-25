@@ -3,17 +3,18 @@
 package main
 
 import (
-	"context"
 	"log"
+	"strings"
 
 	httpclient "github.com/Enziofael/nutrigo/backend/pkg/HTTPclient"
 	client "github.com/Enziofael/nutrigo/bot-telegram/internal/client/v1"
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/factories"
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/handlers"
+	"github.com/Enziofael/nutrigo/bot-telegram/internal/middlewares"
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/templates"
 	tg "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni"
 	cfg "github.com/Enziofael/nutrigo/shared/config"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
 
 func init() {
@@ -26,43 +27,61 @@ func init() {
 
 func main() {
 
-	srv, err := tg.New(tg.ServerConfig{
-		BotConfig: tg.BotConfig{APIToken: cfg.GetBotToken()},
-	})
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	srv := tg.New(tg.NewConfig(cfg.GetBotToken()))
 
 	clt := client.New(cfg.GetBackendFullURL(), httpclient.ClientConfig{
 		APIToken: cfg.GetBackendAPIToken(),
 	})
-	srv.Context = context.WithValue(srv.Context, "client", clt)
+	srv.Context = srv.Context.WithValue("client", clt)
 
 	{
-		srv.Apply(tg.DefaultLogMiddleware)
-		srv.Apply(tg.NewMiddleware(func(ctx context.Context, update tgbotapi.Update, next tg.HandlerFunc) (status string, err *tg.BotError) {
-			u, er := clt.GetUser(ctx, update)
+		srv.Logger.Config.LogBehaviour = tg.LogAllDetailed & ^tg.LogDetailsOk
+		srv.Apply(tg.DefaultLogging(srv), "Logger")
+
+		srv.Apply(func(ctx tg.Context, update tgbotapi.Update, next tg.HandlerFunc) (status tg.HandleStatus, err *tg.BotError) {
+			u, er := clt.GetUser(ctx.C, update)
 			if er != nil {
 				return tg.StatusError, tg.NewBotError(er.Error(), nil)
 			}
-			ctx = context.WithValue(ctx, "user", u)
+			ctx = srv.Context.WithValue("user", u)
 			return next(ctx, update)
 
-		}, "UserGet middleware"))
+		}, "UserGet middleware")
 	}
 
 	{
-		callbackQuery := srv.Group(tg.IsCallbackQuery, "callbackquery group")
+		callbackQuery := srv.Group(tg.IsCallbackQuery, "callbackQ")
 
-		callbackQuery.Use(tg.CallbackQuery("user_usage_request"), tg.HandlerFuncStub, "userUsage_request")
+		callbackQuery.Handle(tg.CallbackQuery("user_usage_request"), tg.HandlerFuncStub, "userUsage_request")
+		callbackQuery.Handle(func(ctx tg.Context, update tgbotapi.Update) bool {
+			if strings.HasPrefix(update.CallbackQuery.Data, "wdky") {
+				return true
+			}
+			return false
+		}, handlers.CallbackQuery_wdky, "WDKY")
+		callbackQuery.Handle(func(ctx tg.Context, update tgbotapi.Update) bool {
+			if strings.HasPrefix(update.CallbackQuery.Data, "nur") {
+				return true
+			}
+			return false
+		}, handlers.CallbackQuery_nur, "NUR")
 	}
 	{
-		command := srv.Group(tg.IsCommand, "command group")
+		command := srv.Group(tg.IsCommand, "command")
+		command.Apply(middlewares.VerifyUsagePermission, "usagePermissionVerify")
 
-		command.Use(tg.Command("start"), handlers.CommandStartHandler, "start command")
-		command.Use(tg.Command("admin"), tg.HandlerFuncStub, "admin command")
+		command.Handle(tg.Command("start"), handlers.CommandStartHandler, "start")
+		command.Handle(tg.Command("admin"), tg.HandlerFuncStub, "admin")
+
+		command.Handle(tg.Command("ok"), handlers.OkHandler, "ok")
+		command.Handle(tg.Command("warn"), handlers.WarnHandler, "warn")
+		command.Handle(tg.Command("err"), handlers.ErrHandler, "err")
+		command.Handle(tg.Command("fall"), handlers.FallHandler, "fall")
+		command.Handle(tg.Command("cust"), handlers.CustomHandler, "custom")
+		command.Handle(tg.Command("shut"), handlers.ShutdownHandler, "shutdown")
 	}
+
+	srv.Handle(tg.Any(), tg.HandlerFuncStub, "Any stub", tg.NewMiddleware(middlewares.VerifyUsagePermission, "usagePermissionVerify"))
 
 	srv.Start()
 }
