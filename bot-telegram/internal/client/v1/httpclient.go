@@ -22,16 +22,17 @@ func (c *Client) Close() error {
 }
 
 func (c *Client) GetUser(ctx context.Context, u tgbotapi.Update) (*models.User, error) {
-	tgID := u.Message.From.ID
+	tgID := u.SentFrom().ID
+	tgTag := u.SentFrom().UserName
+
 	path := fmt.Sprintf("/v1/user/%d", tgID)
 
 	var user models.User
 	if err := c.inner.GET(ctx, path, &user); err != nil {
 		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 404 {
 			return &models.User{
-				TgID:   u.Message.From.ID,
-				TgTag:  u.Message.From.UserName,
-				Status: "unknown",
+				TgID:  tgID,
+				TgTag: tgTag,
 			}, nil // пользователь не найден
 		}
 		return nil, fmt.Errorf("get user by telegram id %d: %w", tgID, err)
@@ -41,14 +42,41 @@ func (c *Client) GetUser(ctx context.Context, u tgbotapi.Update) (*models.User, 
 
 func (c *Client) CreateUser(ctx context.Context, u tgbotapi.Update) (*models.User, error) {
 	req := models.UserCreateRequest{
-		TgID:  u.Message.From.ID,
-		TgTag: u.Message.From.UserName,
+		TgID:  u.SentFrom().ID,
+		TgTag: u.SentFrom().UserName,
 	}
 	path := "/v1/user/"
 
 	var user models.User
 	if err := c.inner.POST(ctx, path, req, &user); err != nil {
-		return nil, &httpclient.APIError{Message: fmt.Sprintf("User creation failed:\n\t%s", err)}
+		return nil, &httpclient.APIError{Message: fmt.Sprintf("User creation failed:\n\t%s", err.Error())}
 	}
 	return &user, nil
+}
+
+func (c *Client) PatchUserStatus(newStatus string, tgID int64, ctx context.Context) (*models.User, error) {
+
+	req := models.UserStatusUpdateRequest{
+		Status: newStatus,
+	}
+	path := fmt.Sprintf("/v1/user/%d", tgID)
+
+	var user *models.User
+	if err := c.inner.PATCH(ctx, path, req, &user); err != nil {
+		return nil, &httpclient.APIError{Message: fmt.Sprintf("Update user status failed:\n\t%s", err.Error())}
+	}
+	return user, nil
+}
+
+func (c *Client) Delete(tgID int64, ctx context.Context) error {
+
+	path := fmt.Sprintf("/v1/user/%d", tgID)
+
+	if err := c.inner.DELETE(ctx, path, nil); err != nil {
+		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 404 {
+			return nil
+		}
+		return fmt.Errorf("Delete user %d: %w", tgID, err)
+	}
+	return nil
 }

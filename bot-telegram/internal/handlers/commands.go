@@ -33,7 +33,7 @@ func CommandStartHandler(ctx tg.Context, update tgbotapi.Update) (tg.HandleStatu
 		msg = factories.SuggestPermissionRequest(update, user)
 	}
 
-	ctx.Value("bot").(*tgbotapi.BotAPI).Send(msg)
+	ctx.Bot.Request(msg)
 
 	return tg.StatusOK, nil
 }
@@ -65,3 +65,4 @@ func ShutdownHandler(ctx tg.Context, udpate tgbotapi.Update) (tg.HandleStatus, *
 	}
 	return tg.StatusWarn, nil
 }
+

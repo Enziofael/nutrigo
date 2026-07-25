@@ -213,16 +213,16 @@ type Log struct {
 	Details        string
 }
 
-func NewLog(ctx Context, u tgbotapi.Update, status HandleStatus, err *BotError, recieved time.Time, handled time.Time) Log {
+func NewLog(ctx Context, u tgbotapi.Update, status HandleStatus, err *BotError) Log {
 	return Log{
-		Timestamp:      handled,
-		Delay:          getDelay(u, handled),
+		Timestamp:      ctx.TimestampHandled,
+		Delay:          getDelay(u, ctx.TimestampHandled),
 		Status:         status,
-		ProcessingTime: getProcessingTime(recieved, handled),
+		ProcessingTime: getProcessingTime(ctx.TimestampRecieved, ctx.TimestampHandled),
 		Username:       getUsername(u),
 		RoutingPath:    getRoutingPath(ctx),
 		Update:         u,
-		Details:        getDetails(u),
+		Details:        getDetails(u, err),
 	}
 }
 
@@ -264,11 +264,15 @@ func getProcessingTime(recieved time.Time, handled time.Time) time.Duration {
 }
 
 func getRoutingPath(ctx Context) string {
-	return ctx.Value(ContextKey_Path).(string)
+	return ctx.RoutingPath
 }
 
-func getDetails(u tgbotapi.Update) string {
+func getDetails(u tgbotapi.Update, err *BotError) string {
 	s := "id:" + strconv.Itoa(u.UpdateID) + " "
+
+	if err != nil {
+		s += "error:" + err.Error() + " "
+	}
 
 	if u.Message != nil && u.Message.Text != "" {
 		s = s + "text:\"" + u.Message.Text + "\" "
@@ -550,8 +554,6 @@ func (l *Logger) formatUpdateDetailsToBuilder(sb *strings.Builder, v reflect.Val
 		return
 	}
 
-	tab := strings.Repeat(" ", level*4)
-
 	if (v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface) && !v.IsNil() {
 		v = v.Elem()
 	}
@@ -559,8 +561,28 @@ func (l *Logger) formatUpdateDetailsToBuilder(sb *strings.Builder, v reflect.Val
 		return
 	}
 
-	t := v.Type()
+	tab := strings.Repeat(" ", level*4)
 
+	if v.Kind() == reflect.Slice || v.Kind() == reflect.Array {
+		sb.WriteString(tab)
+		sb.WriteString("[")
+		sb.WriteString(v.Type().String())
+		sb.WriteString("] {\n")
+		for i := 0; i < v.Len(); i++ {
+			l.formatUpdateDetailsToBuilder(sb, v.Index(i), level+1)
+		}
+		sb.WriteString(tab)
+		sb.WriteString("}\n")
+		return
+	}
+
+	if v.Kind() != reflect.Struct {
+		sb.WriteString(tab)
+		fmt.Fprintf(sb, "%v\n", v.Interface())
+		return
+	}
+
+	t := v.Type()
 	sb.WriteString(tab)
 	sb.WriteString(t.Name())
 	sb.WriteString(" {\n")
@@ -695,13 +717,12 @@ func (l *Logger) defaultLogMiddleware(ctx Context, update tgbotapi.Update, next 
 
 	status, err = next(ctx, update)
 
-	timestampHandled := time.Now()
+	ctx.TimestampHandled = time.Now()
 
 	hints.Do(l.printHint)
 
 	go func() {
-		timestampRecieved := ctx.Value(ContextKey_TimestampRecieved).(time.Time)
-		log := NewLog(ctx, update, status, err, timestampRecieved, timestampHandled)
+		log := NewLog(ctx, update, status, err)
 
 		l.Log(log)
 		l.Err(log)

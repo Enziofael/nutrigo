@@ -16,6 +16,10 @@ type UserCreateRequest struct {
 	TgTag string `json:"tgTag" binding:"required"`
 }
 
+type UserStatusUpdateRequest struct {
+	Status string `json:"status" binding:"required,ne="`
+}
+
 const (
 	StatusRequested  = "requested"
 	StatusConfirmed  = "confirmed"
@@ -23,3 +27,12 @@ const (
 	StatusBanned     = "banned"
 	StatusAdmin      = "admin"
 )
+
+func ValidateStatus(status string) bool {
+	switch status {
+	case StatusRequested, StatusConfirmed, StatusRestricted, StatusBanned, StatusAdmin:
+		return true
+	default:
+		return false
+	}
+}

@@ -7,3 +7,5 @@ CREATE TABLE IF NOT EXISTS Users (
     status VARCHAR NOT NULL DEFAULT 'requested',
 	CONSTRAINT status_constraint CHECK(status IN('requested', 'confirmed', 'restricted', 'banned', 'admin'))
 );
+
+ALTER TABLE Users ADD COLUMN IF NOT EXISTS input_message_id BIGINT

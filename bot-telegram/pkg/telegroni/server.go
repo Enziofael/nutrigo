@@ -563,7 +563,8 @@ func (s *Server) handle(ctx Context, u tgbotapi.Update) {
 //	type Server struct
 func defaultRoutingFallback(ctx Context, l *Logger, u tgbotapi.Update, status HandleStatus, err *BotError) {
 	hints.Do(l.printHint)
-	log := NewLog(ctx, u, StatusFallback, err, time.Now(), time.Now())
+	ctx.TimestampHandled = time.Now()
+	log := NewLog(ctx, u, StatusFallback, err)
 	l.Log(log)
 	l.Err(log)
 	l.FileWrite(log)

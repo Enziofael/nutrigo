@@ -4,11 +4,13 @@ package main
 
 import (
 	"log"
+	"strings"
 
 	httpclient "github.com/Enziofael/nutrigo/backend/pkg/HTTPclient"
 	client "github.com/Enziofael/nutrigo/bot-telegram/internal/client/v1"
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/factories"
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/handlers"
+	"github.com/Enziofael/nutrigo/bot-telegram/internal/middlewares"
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/templates"
 	tg "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni"
 	cfg "github.com/Enziofael/nutrigo/shared/config"
@@ -33,6 +35,7 @@ func main() {
 	srv.Context = srv.Context.WithValue("client", clt)
 
 	{
+		srv.Logger.Config.LogBehaviour = tg.LogAllDetailed & ^tg.LogDetailsOk
 		srv.Apply(tg.DefaultLogging(srv), "Logger")
 
 		srv.Apply(func(ctx tg.Context, update tgbotapi.Update, next tg.HandlerFunc) (status tg.HandleStatus, err *tg.BotError) {
@@ -50,9 +53,22 @@ func main() {
 		callbackQuery := srv.Group(tg.IsCallbackQuery, "callbackQ")
 
 		callbackQuery.Handle(tg.CallbackQuery("user_usage_request"), tg.HandlerFuncStub, "userUsage_request")
+		callbackQuery.Handle(func(ctx tg.Context, update tgbotapi.Update) bool {
+			if strings.HasPrefix(update.CallbackQuery.Data, "wdky") {
+				return true
+			}
+			return false
+		}, handlers.CallbackQuery_wdky, "WDKY")
+		callbackQuery.Handle(func(ctx tg.Context, update tgbotapi.Update) bool {
+			if strings.HasPrefix(update.CallbackQuery.Data, "nur") {
+				return true
+			}
+			return false
+		}, handlers.CallbackQuery_nur, "NUR")
 	}
 	{
 		command := srv.Group(tg.IsCommand, "command")
+		command.Apply(middlewares.VerifyUsagePermission, "usagePermissionVerify")
 
 		command.Handle(tg.Command("start"), handlers.CommandStartHandler, "start")
 		command.Handle(tg.Command("admin"), tg.HandlerFuncStub, "admin")
@@ -65,7 +81,7 @@ func main() {
 		command.Handle(tg.Command("shut"), handlers.ShutdownHandler, "shutdown")
 	}
 
-	srv.Handle(tg.Any(), tg.HandlerFuncStub, "any")
+	srv.Handle(tg.Any(), tg.HandlerFuncStub, "Any stub", tg.NewMiddleware(middlewares.VerifyUsagePermission, "usagePermissionVerify"))
 
 	srv.Start()
 }
