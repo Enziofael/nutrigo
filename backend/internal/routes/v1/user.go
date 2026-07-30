@@ -1,4 +1,4 @@
-package v1
+package routes
 
 import (
 	"github.com/Enziofael/nutrigo/backend/internal/server"
@@ -23,7 +23,7 @@ func RegisterUserRoutes(group *gin.RouterGroup, s *server.Server) {
 		user.POST("/", handler.Create)
 	}
 	{
-		user.PATCH("/:tg_id", handler.PatchStatus)
+		user.PATCH("/:tg_id", handler.Patch)
 	}
 	{
 		user.DELETE("/:tg_id", handler.Delete)

@@ -271,7 +271,7 @@ func getDetails(u tgbotapi.Update, err *BotError) string {
 	s := "id:" + strconv.Itoa(u.UpdateID) + " "
 
 	if err != nil {
-		s += "error:" + err.Error() + " "
+		s += "error:\"" + err.Error() + "\" "
 	}
 
 	if u.Message != nil && u.Message.Text != "" {
@@ -315,6 +315,9 @@ func getDetails(u tgbotapi.Update, err *BotError) string {
 	}
 	if u.Message != nil && u.Message.Sticker != nil {
 		s = s + "setName:\"" + u.Message.Sticker.SetName + "\" emoji:\"" + u.Message.Sticker.Emoji + "\" "
+	}
+	if u.CallbackQuery != nil {
+		s = s + "data:\"" + u.CallbackQuery.Data + "\" "
 	}
 	s = strings.ReplaceAll(s, "\n", " ")
 	return s

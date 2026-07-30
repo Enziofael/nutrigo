@@ -489,7 +489,7 @@ func (s *Server) Group(matcher MatchFunc, name string) *HandlerGroup {
 func (s *Server) Start() *BotError {
 	bot, err := tgbotapi.NewBotAPI(s.Config.BotApiToken)
 	if err != nil {
-		return NewBotError("Bot Creation failed", NewBotError(err.Error(), nil))
+		return NewBotErrorf("Can't create bor at Start: %w", err)
 	}
 	s.Context.Bot = bot
 

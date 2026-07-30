@@ -1,6 +1,8 @@
 package telegroni
 
 import (
+	"regexp"
+
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
 
@@ -130,10 +132,11 @@ func IsCallbackQuery(ctx Context, update tgbotapi.Update) bool {
 	return update.CallbackQuery != nil
 }
 
-func CallbackQuery(data string) MatchFunc {
+func CallbackQuery(regexpPattern string) MatchFunc {
+	re := regexp.MustCompile(regexpPattern)
 	return func(ctx Context, update tgbotapi.Update) bool {
 		return IsCallbackQuery(ctx, update) &&
-			update.CallbackQuery.Data == data
+			re.Match([]byte(update.CallbackQuery.Data))
 	}
 }
 

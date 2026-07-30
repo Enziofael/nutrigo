@@ -12,14 +12,15 @@ func Register(server *server.Server) {
 	{
 		apiv1.RegisterCommonRoutes(v1, server)
 		apiv1.RegisterUserRoutes(v1, server)
+		apiv1.RegisterExerciseRoutes(v1, server)
 		// apiv1.Register...Routes(v1, server)
 		// ...
 	}
 	/*
-	v2 := router.Group("/v2")
-	{
-		apiv2.Register...Routes(v2, server)
-		...
-	}
+		v2 := router.Group("/v2")
+		{
+			apiv2.Register...Routes(v2, server)
+			...
+		}
 	*/
 }

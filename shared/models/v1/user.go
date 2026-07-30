@@ -3,21 +3,37 @@ package models
 import "time"
 
 type User struct {
-	ID             int64     `json:"id"`
-	TgID           int64     `json:"tgID"`
-	TgTag          string    `json:"tgTag"`
-	CreatedAt      time.Time `json:"createdAt"`
-	LastMessagedAt time.Time `json:"lastMessagedAt"`
-	Status         string    `json:"status"`
+	ID             int64       `json:"id"`
+	TgID           int64       `json:"tg_id"`
+	TgTag          string      `json:"tg_tag"`
+	CreatedAt      time.Time   `json:"created_at"`
+	LastMessagedAt time.Time   `json:"last_messaged_at"`
+	Status         string      `json:"status"`
+	Context        string      `json:"context"`
+	ContextData    ContextData `json:"context_data"`
+}
+
+type ContextData struct {
+	MessageID int               `json:"message_id"`
+	Focus    int               `json:"focus"`
+	Values    map[string]string `json:"values"`
 }
 
 type UserCreateRequest struct {
-	TgID  int64  `json:"tgId" binding:"required"`
-	TgTag string `json:"tgTag" binding:"required"`
+	TgID  int64  `json:"tg_id" binding:"required"`
+	TgTag string `json:"name" binding:"required"`
 }
 
 type UserStatusUpdateRequest struct {
 	Status string `json:"status" binding:"required,ne="`
+}
+
+type UserPatchRequest struct {
+	TgTag          *string      `json:"tg_tag"`
+	LastMessagedAt *time.Time   `json:"last_messaged_at"`
+	Status         *string      `json:"status"`
+	Context        *string      `json:"context_id"`
+	ContextData    *ContextData `json:"context_data"`
 }
 
 const (

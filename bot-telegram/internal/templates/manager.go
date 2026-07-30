@@ -3,6 +3,7 @@ package templates
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	engine "github.com/Enziofael/nutrigo/bot-telegram/internal/templates/engines"
 )
@@ -50,6 +51,34 @@ func (m *Manager) Render(engineName, templateName string, data interface{}) (str
 	return buf.String(), nil
 }
 
+func (m *Manager) ParseValues(engineName, templateName string, dataString string) (map[string]string, error) {
+	eng, ok := m.engines[engineName]
+
+	if !ok {
+		return map[string]string{}, fmt.Errorf("Engine %s not found", engineName)
+	}
+
+	res := make(map[string]string, 0)
+	if err := eng.ParseValues(&res, templateName, dataString); err != nil {
+		return map[string]string{}, err
+	}
+
+	return res, nil
+}
+
 func (m *Manager) RenderHTML(name string, data interface{}) (string, error) {
 	return m.Render("html", name, data)
+}
+
+func (m *Manager) ParseValuesHTML(name string, data string) (map[string]string, error) {
+	return m.ParseValues("html", name, data)
+}
+
+func (m *Manager) WrapLineHTML(html string, lineNumber int, openTags, closeTags string) string {
+	lines := strings.Split(html, "\n")
+	if lineNumber < 1 || lineNumber > len(lines) {
+		return html
+	}
+	lines[lineNumber-1] = openTags + lines[lineNumber-1] + closeTags
+	return strings.Join(lines, "\n")
 }

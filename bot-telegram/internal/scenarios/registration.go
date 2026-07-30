@@ -14,7 +14,7 @@ func WeDontKnowYou(ctx tg.Context, u tgbotapi.Update) (tg.HandleStatus, *tg.BotE
 		return tg.StatusError, boterr
 	}
 	if _, err := ctx.Bot.Request(msg); err != nil {
-		return tg.StatusError, tg.NewBotError(err.Error(), nil)
+		return tg.StatusError, tg.NewBotErrorf("Can't request sending msg at WeDontKnowYou: %w", err)
 	}
 
 	return tg.StatusOK, nil
@@ -22,15 +22,15 @@ func WeDontKnowYou(ctx tg.Context, u tgbotapi.Update) (tg.HandleStatus, *tg.BotE
 
 func NewUsageRequest(ctx tg.Context, u tgbotapi.Update) (tg.HandleStatus, *tg.BotError) {
 	if _, err := ctx.Value("client").(*client.Client).CreateUser(ctx.C, u); err != nil {
-		return tg.StatusError, tg.NewBotError(err.Error(), nil)
+		return tg.StatusError, tg.NewBotErrorf("Can't get client at NewUsageRequest: %w", err)
 	}
 
 	adminMsg, boterr := f.NewUsageRequest(ctx, u)
 	if boterr != nil {
-		return tg.StatusError, boterr
+		return tg.StatusError, tg.NewBotErrorw("Can't fabricate adminMsg at NewUsageRequest", boterr)
 	}
 	if _, err := ctx.Bot.Request(adminMsg); err != nil {
-		return tg.StatusError, tg.NewBotError(err.Error(), nil)
+		return tg.StatusError, tg.NewBotErrorf("Can't request sending adminMsg at NewUsageRequest: %w", err)
 	}
 
 	return YourUsageRequestSend(ctx, u)
@@ -41,8 +41,8 @@ func YourUsageRequestSend(ctx tg.Context, u tgbotapi.Update) (tg.HandleStatus, *
 	if boterr != nil {
 		return tg.StatusError, boterr
 	}
-	if _, err := ctx.Bot.Request(msg); err != nil {
-		return tg.StatusError, tg.NewBotError(err.Error(), nil)
+	if _, err := ctx.Bot.Send(msg); err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't send msg at YourUsageRequestSend: %w", err)
 	}
 
 	return tg.StatusOK, nil
@@ -50,14 +50,16 @@ func YourUsageRequestSend(ctx tg.Context, u tgbotapi.Update) (tg.HandleStatus, *
 
 func ConfirmUsageRequest(ctx tg.Context, u tgbotapi.Update, tgID int64) (tg.HandleStatus, *tg.BotError) {
 	if _, err := ctx.Value("client").(*client.Client).PatchUserStatus(models.StatusConfirmed, tgID, ctx.C); err != nil {
-		return tg.StatusError, tg.NewBotError(err.Error(), nil)
+		return tg.StatusError, tg.NewBotErrorf("Can't get client at ConfirmUsageRequest: %w", err)
 	}
+
 	editMsg, boterr := f.ConfirmUsageRequest(ctx, u)
 	if boterr != nil {
-		return tg.StatusError, boterr
+		return tg.StatusError, tg.NewBotErrorw("Can't fabricate editMsg at ConfirmUsageRequest", boterr)
 	}
+
 	if _, err := ctx.Bot.Request(editMsg); err != nil {
-		return tg.StatusError, tg.NewBotError(err.Error(), nil)
+		return tg.StatusError, tg.NewBotErrorf("Can't request editMsg at ConfirmUsageRequest: %w", err)
 	}
 
 	return NotifyUsageRequestConfirmed(ctx, tgID)
@@ -65,14 +67,16 @@ func ConfirmUsageRequest(ctx tg.Context, u tgbotapi.Update, tgID int64) (tg.Hand
 
 func RejectUsageRequest(ctx tg.Context, u tgbotapi.Update, tgID int64) (tg.HandleStatus, *tg.BotError) {
 	if err := ctx.Value("client").(*client.Client).Delete(tgID, ctx.C); err != nil {
-		return tg.StatusError, tg.NewBotError(err.Error(), nil)
+		return tg.StatusError, tg.NewBotErrorf("Can't get client at RejectUsageRequest: %w", err)
 	}
+
 	editMsg, boterr := f.RejectUsageRequest(ctx, u)
 	if boterr != nil {
-		return tg.StatusError, boterr
+		return tg.StatusError, tg.NewBotErrorw("Can't fabricate editMsg at RejectUsageRequest", boterr)
 	}
+
 	if _, err := ctx.Bot.Request(editMsg); err != nil {
-		return tg.StatusError, tg.NewBotError(err.Error(), nil)
+		return tg.StatusError, tg.NewBotErrorf("Can't request editMsg at RejectUsageRequest: %w", err)
 	}
 
 	return NotifyUsageRequestRejected(ctx, tgID)
@@ -80,26 +84,28 @@ func RejectUsageRequest(ctx tg.Context, u tgbotapi.Update, tgID int64) (tg.Handl
 
 func BlockUsageRequest(ctx tg.Context, u tgbotapi.Update, tgID int64) (tg.HandleStatus, *tg.BotError) {
 	if _, err := ctx.Value("client").(*client.Client).PatchUserStatus(models.StatusBanned, tgID, ctx.C); err != nil {
-		return tg.StatusError, tg.NewBotError(err.Error(), nil)
+		return tg.StatusError, tg.NewBotErrorf("Can't get client at BlockUsageRequest: %w", err)
 	}
+
 	editMsg, boterr := f.BlockUsageRequest(ctx, u)
 	if boterr != nil {
-		return tg.StatusError, boterr
+		return tg.StatusError, tg.NewBotErrorw("Can't fabricate editMsg at BlockUsageRequest", boterr)
 	}
 	if _, err := ctx.Bot.Request(editMsg); err != nil {
-		return tg.StatusError, tg.NewBotError(err.Error(), nil)
+		return tg.StatusError, tg.NewBotErrorf("Can't request editMsg at BlockUsageRequest: %w", err)
 	}
 
 	return NotifyUsageRequestBlocked(ctx, tgID)
 }
 
 func NotifyUsageRequestConfirmed(ctx tg.Context, tgID int64) (tg.HandleStatus, *tg.BotError) {
+
 	notificationMsg, boterr := f.NotifyUsageRequestConfirmed(ctx, tgID)
 	if boterr != nil {
-		return tg.StatusError, boterr
+		return tg.StatusError, tg.NewBotErrorw("Can't fabricate notificationMsg at NotifyUsageRequestConfirmed", boterr)
 	}
-	if _, err := ctx.Bot.Request(notificationMsg); err != nil {
-		return tg.StatusError, tg.NewBotError(err.Error(), nil)
+	if _, err := ctx.Bot.Send(notificationMsg); err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't send notificationMsg at NotifyUsageRequestConfirmed: %w", err)
 	}
 
 	return tg.StatusOK, nil
@@ -109,10 +115,10 @@ func NotifyUsageRequestRejected(ctx tg.Context, tgID int64) (tg.HandleStatus, *t
 
 	notificationMsg, boterr := f.NotifyUsageRequestRejected(ctx, tgID)
 	if boterr != nil {
-		return tg.StatusError, boterr
+		return tg.StatusError, tg.NewBotErrorw("Can't fabricate notificationMsg at NotifyUsageRequestRejected", boterr)
 	}
-	if _, err := ctx.Bot.Request(notificationMsg); err != nil {
-		return tg.StatusError, tg.NewBotError(err.Error(), nil)
+	if _, err := ctx.Bot.Send(notificationMsg); err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't send notificationMsg at NotifyUsageRequestRejected: %w", err)
 	}
 
 	return tg.StatusOK, nil
@@ -122,10 +128,10 @@ func NotifyUsageRequestBlocked(ctx tg.Context, tgID int64) (tg.HandleStatus, *tg
 
 	notificationMsg, boterr := f.NotifyUsageRequestBlocked(ctx, tgID)
 	if boterr != nil {
-		return tg.StatusError, boterr
+		return tg.StatusError, tg.NewBotErrorw("Can't fabricate notificationMsg at NotifyUsageRequestBlocked", boterr)
 	}
-	if _, err := ctx.Bot.Request(notificationMsg); err != nil {
-		return tg.StatusError, tg.NewBotError(err.Error(), nil)
+	if _, err := ctx.Bot.Send(notificationMsg); err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't send notificationMsg at NotifyUsageRequestBlocked: %w", err)
 	}
 
 	return tg.StatusOK, nil

@@ -8,4 +8,5 @@ CREATE TABLE IF NOT EXISTS Users (
 	CONSTRAINT status_constraint CHECK(status IN('requested', 'confirmed', 'restricted', 'banned', 'admin'))
 );
 
-ALTER TABLE Users ADD COLUMN IF NOT EXISTS input_message_id BIGINT
+ALTER TABLE Users ADD COLUMN IF NOT EXISTS context VARCHAR;
+ALTER TABLE Users ADD COLUMN IF NOT EXISTS context_data JSON;

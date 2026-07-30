@@ -34,7 +34,7 @@ func DeleteSourceMessage(ctx tg.Context, update tgbotapi.Update, next tg.Handler
 	}
 	del := tgbotapi.NewDeleteMessage(update.SentFrom().ID, messageID)
 	if _, err := ctx.Bot.Request(del); err != nil {
-		return tg.StatusError, tg.NewBotError(err.Error(), nil)
+		return tg.StatusError, tg.NewBotErrorf("Can't request deletion at DeleteSourceMessage: %w", err)
 	}
 	return next(ctx, update)
 }

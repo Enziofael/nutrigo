@@ -1,4 +1,4 @@
-package v1
+package handler
 
 import (
 	"errors"
@@ -67,7 +67,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, user)
 }
 
-func (h *UserHandler) PatchStatus(c *gin.Context) {
+func (h *UserHandler) Patch(c *gin.Context) {
 	tgIDStr := c.Param("tg_id")
 	if tgIDStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "tg_id is required"})
@@ -80,13 +80,13 @@ func (h *UserHandler) PatchStatus(c *gin.Context) {
 		return
 	}
 
-	var req models.UserStatusUpdateRequest
+	var req models.UserPatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "status is required and must be a string"})
 		return
 	}
 
-	user, err := h.service.PatchStatus(c.Request.Context(), tgID, req)
+	user, err := h.service.Patch(c.Request.Context(), tgID, req)
 	if err != nil {
 		switch {
 		case errors.Is(err, repository.ErrUserNotFound):

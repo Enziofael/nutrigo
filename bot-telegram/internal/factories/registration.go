@@ -18,7 +18,7 @@ func SetTemplateManager(m *t.Manager) {
 func WeDontKnowYou(ctx tg.Context, u a.Update) (a.MessageConfig, *tg.BotError) {
 	text, err := tmplManager.RenderHTML("WeDontKnowYou", nil)
 	if err != nil {
-		return a.MessageConfig{}, tg.NewBotError(err.Error(), nil)
+		return a.MessageConfig{}, tg.NewBotErrorf("Can't render html at WeDontKnowYou: %w", err)
 	}
 
 	msg := a.NewMessage(u.FromChat().ID, text)
@@ -37,7 +37,7 @@ func WeDontKnowYou(ctx tg.Context, u a.Update) (a.MessageConfig, *tg.BotError) {
 func WeDontKnowYouReplyMarkup(tgId int64) (a.InlineKeyboardMarkup, *tg.BotError) {
 	text, err := tmplManager.RenderHTML("WeDontKnowYouReplyMarkup", nil)
 	if err != nil {
-		return a.InlineKeyboardMarkup{}, tg.NewBotError(err.Error(), nil)
+		return a.InlineKeyboardMarkup{}, tg.NewBotErrorf("Can't render html at WeDontKnowYouReplyMarkup: %w", err)
 	}
 
 	kb := a.NewInlineKeyboardMarkup(
@@ -52,7 +52,7 @@ func WeDontKnowYouReplyMarkup(tgId int64) (a.InlineKeyboardMarkup, *tg.BotError)
 func NewUsageRequest(ctx tg.Context, u a.Update) (a.MessageConfig, *tg.BotError) {
 	text, err := tmplManager.RenderHTML("NewUsageRequest", ctx.Value("user"))
 	if err != nil {
-		return a.MessageConfig{}, tg.NewBotError(err.Error(), nil)
+		return a.MessageConfig{}, tg.NewBotErrorf("Can't render html at NewUsageRequest: %w", err)
 	}
 
 	msg := a.NewMessage(490590745, text)
@@ -71,15 +71,15 @@ func NewUsageRequest(ctx tg.Context, u a.Update) (a.MessageConfig, *tg.BotError)
 func NewUsageRequestReplyMarkup(tgId int64) (a.InlineKeyboardMarkup, *tg.BotError) {
 	textConfirm, err := tmplManager.RenderHTML("NewUsageRequestReplyMarkup_textConfirm", nil)
 	if err != nil {
-		return a.InlineKeyboardMarkup{}, tg.NewBotError(err.Error(), nil)
+		return a.InlineKeyboardMarkup{}, tg.NewBotErrorf("Can't render html at NewUsageRequestReplyMarkup: %w", err)
 	}
 	textReject, err := tmplManager.RenderHTML("NewUsageRequestReplyMarkup_textReject", nil)
 	if err != nil {
-		return a.InlineKeyboardMarkup{}, tg.NewBotError(err.Error(), nil)
+		return a.InlineKeyboardMarkup{}, tg.NewBotErrorf("Can't render html at NewUsageRequestReplyMarkup: %w", err)
 	}
 	textBlock, err := tmplManager.RenderHTML("NewUsageRequestReplyMarkup_textBlock", nil)
 	if err != nil {
-		return a.InlineKeyboardMarkup{}, tg.NewBotError(err.Error(), nil)
+		return a.InlineKeyboardMarkup{}, tg.NewBotErrorf("Can't render html at NewUsageRequestReplyMarkup: %w", err)
 	}
 
 	kb := a.NewInlineKeyboardMarkup(
@@ -96,7 +96,7 @@ func NewUsageRequestReplyMarkup(tgId int64) (a.InlineKeyboardMarkup, *tg.BotErro
 func YourUsageRequestSend(ctx tg.Context, u a.Update) (a.MessageConfig, *tg.BotError) {
 	text, err := tmplManager.RenderHTML("YourUsageRequestSend", nil)
 	if err != nil {
-		return a.MessageConfig{}, tg.NewBotError(err.Error(), nil)
+		return a.MessageConfig{}, tg.NewBotErrorf("Can't render html at YourUsageRequestSend: %w", err)
 	}
 
 	msg := a.NewMessage(u.FromChat().ID, text)
@@ -109,7 +109,7 @@ func YourUsageRequestSend(ctx tg.Context, u a.Update) (a.MessageConfig, *tg.BotE
 func ConfirmUsageRequest(ctx tg.Context, u a.Update) (a.EditMessageTextConfig, *tg.BotError) {
 	text, err := tmplManager.RenderHTML("ConfirmUsageRequest", u.CallbackQuery.Message)
 	if err != nil {
-		return a.EditMessageTextConfig{}, tg.NewBotError(err.Error(), nil)
+		return a.EditMessageTextConfig{}, tg.NewBotErrorf("Can't render html at ConfirmUsageRequest: %w", err)
 	}
 
 	msg := a.NewEditMessageText(u.FromChat().ID, u.CallbackQuery.Message.MessageID, text)
@@ -124,7 +124,7 @@ func ConfirmUsageRequest(ctx tg.Context, u a.Update) (a.EditMessageTextConfig, *
 func RejectUsageRequest(ctx tg.Context, u a.Update) (a.EditMessageTextConfig, *tg.BotError) {
 	text, err := tmplManager.RenderHTML("RejectUsageRequest", u.CallbackQuery.Message)
 	if err != nil {
-		return a.EditMessageTextConfig{}, tg.NewBotError(err.Error(), nil)
+		return a.EditMessageTextConfig{}, tg.NewBotErrorf("Can't render html at RejectUsageRequest: %w", err)
 	}
 
 	msg := a.NewEditMessageText(u.FromChat().ID, u.CallbackQuery.Message.MessageID, text)
@@ -139,7 +139,7 @@ func RejectUsageRequest(ctx tg.Context, u a.Update) (a.EditMessageTextConfig, *t
 func BlockUsageRequest(ctx tg.Context, u a.Update) (a.EditMessageTextConfig, *tg.BotError) {
 	text, err := tmplManager.RenderHTML("BlockUsageRequest", u.CallbackQuery.Message)
 	if err != nil {
-		return a.EditMessageTextConfig{}, tg.NewBotError(err.Error(), nil)
+		return a.EditMessageTextConfig{}, tg.NewBotErrorf("Can't render html at BlockUsageRequest: %w", err)
 	}
 
 	msg := a.NewEditMessageText(u.FromChat().ID, u.CallbackQuery.Message.MessageID, text)
@@ -154,7 +154,7 @@ func BlockUsageRequest(ctx tg.Context, u a.Update) (a.EditMessageTextConfig, *tg
 func NotifyUsageRequestConfirmed(ctx tg.Context, tgID int64) (a.MessageConfig, *tg.BotError) {
 	text, err := tmplManager.RenderHTML("NotifyUsageRequestConfirmed", nil)
 	if err != nil {
-		return a.MessageConfig{}, tg.NewBotError(err.Error(), nil)
+		return a.MessageConfig{}, tg.NewBotErrorf("Can't render html at NotifyUsageRequestConfirmed: %w", err)
 	}
 
 	msg := a.NewMessage(tgID, text)
@@ -170,7 +170,7 @@ func NotifyUsageRequestConfirmed(ctx tg.Context, tgID int64) (a.MessageConfig, *
 func NotifyUsageRequestRejected(ctx tg.Context, tgID int64) (a.MessageConfig, *tg.BotError) {
 	text, err := tmplManager.RenderHTML("NotifyUsageRequestRejected", nil)
 	if err != nil {
-		return a.MessageConfig{}, tg.NewBotError(err.Error(), nil)
+		return a.MessageConfig{}, tg.NewBotErrorf("Can't render html at NotifyUsageRequestRejected: %w", err)
 	}
 
 	msg := a.NewMessage(tgID, text)
@@ -183,7 +183,7 @@ func NotifyUsageRequestRejected(ctx tg.Context, tgID int64) (a.MessageConfig, *t
 func NotifyUsageRequestBlocked(ctx tg.Context, tgID int64) (a.MessageConfig, *tg.BotError) {
 	text, err := tmplManager.RenderHTML("NotifyUsageRequestBlocked", nil)
 	if err != nil {
-		return a.MessageConfig{}, tg.NewBotError(err.Error(), nil)
+		return a.MessageConfig{}, tg.NewBotErrorf("Can't render html at NotifyUsageRequestBlocked: %w", err)
 	}
 
 	msg := a.NewMessage(tgID, text)

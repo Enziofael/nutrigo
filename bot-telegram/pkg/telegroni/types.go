@@ -2,7 +2,6 @@ package telegroni
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
@@ -181,7 +180,7 @@ func NewHandler(matcher MatchFunc, function HandlerFunc, name string) *Handler {
 //	func (g *HandlerGroup) handle()
 func (h *Handler) handle(ctx Context, u tgbotapi.Update) (matched bool, status HandleStatus, err *BotError) {
 	if !h.MatchFunc(ctx, u) {
-		return false, StatusWarn, NewBotError(fmt.Sprintf("[Handler] %s unmatched", h.Name), nil)
+		return false, StatusWarn, NewBotErrorf("[Handler] %s unmatched", h.Name)
 	}
 
 	ctx = appendPath(ctx, h.Name)
@@ -432,22 +431,23 @@ func (g *HandlerGroup) Group(matcher MatchFunc, name string) *HandlerGroup {
 //	func (s *Server) handle()
 func (g *HandlerGroup) handle(ctx Context, u tgbotapi.Update) (matched bool, status HandleStatus, err *BotError) {
 	if !g.MatchFunc(ctx, u) {
-		return false, StatusWarn, NewBotError(fmt.Sprintf("[Group] %s: unmatched", g.Name), nil)
+		return false, StatusWarn, NewBotErrorf("[Group] %s: unmatched", g.Name)
 	}
 
 	ctx = appendPath(ctx, g.Name)
 
+	err = NewBotErrorf("[Group] %s: no matched handler", g.Name)
 	for _, route := range g.Routes {
 		var innerErr *BotError
 		matched, status, innerErr = route.handle(ctx, u)
 		if innerErr != nil {
-			err = NewBotError("", innerErr)
+			err = NewBotErrorw(innerErr.Error(), err)
 		}
 		if matched {
 			return true, status, err
 		}
 	}
-	return false, StatusWarn, NewBotError(fmt.Sprintf("[Group] %s: no matched handler", g.Name), err)
+	return false, StatusWarn, err
 }
 
 // ======================== TYPE =========================
@@ -608,7 +608,7 @@ type HandlerFunc func(ctx Context, update tgbotapi.Update) (status HandleStatus,
 
 // - HandlerFuncStub is a stub handler for testing.
 func HandlerFuncStub(ctx Context, update tgbotapi.Update) (status HandleStatus, err *BotError) {
-	return StatusWarn, NewBotError("Stub handler matched", nil)
+	return StatusWarn, NewBotError("Stub handler matched")
 }
 
 // - MiddlewareFunc is a function that wraps a handler.

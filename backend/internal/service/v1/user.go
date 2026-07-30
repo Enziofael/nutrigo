@@ -1,4 +1,4 @@
-package v1
+package service
 
 import (
 	"context"
@@ -17,17 +17,17 @@ func NewUserService(repo repository.UserRepository) *UserService {
 
 func (s *UserService) GetByTgID(ctx context.Context, tgID int64) (*models.User, error) {
 	if tgID == 0 {
-		return nil, TgIdRequired
+		return nil, ErrTgIdRequired
 	}
 	return s.repo.GetByTgId(ctx, tgID)
 }
 
 func (s *UserService) Create(ctx context.Context, req models.UserCreateRequest) (*models.User, error) {
 	if req.TgID == 0 {
-		return nil, TgIdRequired
+		return nil, ErrTgIdRequired
 	}
 	if req.TgTag == "" {
-		return nil, TgTagRequired
+		return nil, ErrTgTagRequired
 	}
 
 	// Проверка существования
@@ -42,28 +42,29 @@ func (s *UserService) Create(ctx context.Context, req models.UserCreateRequest) 
 	return s.repo.Create(ctx, req)
 }
 
-func (s *UserService) PatchStatus(ctx context.Context, tgID int64, req models.UserStatusUpdateRequest) (*models.User, error) {
+func (s *UserService) Patch(ctx context.Context, tgID int64, req models.UserPatchRequest) (*models.User, error) {
 	if tgID == 0 {
-		return nil, TgIdRequired
+		return nil, ErrTgIdRequired
 	}
-	if !models.ValidateStatus(req.Status) {
+
+	if req.TgTag == nil &&
+		req.LastMessagedAt == nil &&
+		req.Status == nil &&
+		req.Context == nil &&
+		req.ContextData == nil {
+		return nil, ErrInvalidRequest
+	}
+
+	if req.Status != nil && !models.ValidateStatus(*req.Status) {
 		return nil, ErrInvalidStatus
 	}
 
-	existing, err := s.repo.GetByTgId(ctx, tgID)
-	if err != nil {
-		return nil, err
-	}
-	if existing == nil {
-		return nil, repository.ErrUserNotFound
-	}
-
-	return s.repo.PatchStatus(ctx, tgID, req)
+	return s.repo.Patch(ctx, tgID, req)
 }
 
 func (s *UserService) Delete(ctx context.Context, tgID int64) error {
 	if tgID == 0 {
-		return TgIdRequired
+		return ErrTgIdRequired
 	}
 
 	existing, err := s.repo.GetByTgId(ctx, tgID)
