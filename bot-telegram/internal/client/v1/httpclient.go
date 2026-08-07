@@ -3,10 +3,10 @@ package client
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	httpclient "github.com/Enziofael/nutrigo/backend/pkg/HTTPclient"
 	models "github.com/Enziofael/nutrigo/shared/models/v1"
-	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
 
 type Client struct {
@@ -21,128 +21,197 @@ func (c *Client) Close() error {
 	return c.inner.Close()
 }
 
-func (c *Client) GetUser(ctx context.Context, u tgbotapi.Update) (*models.User, error) {
-	tgID := u.SentFrom().ID
-	tgTag := u.SentFrom().UserName
+// ============================================================
+// User
+// ============================================================
 
-	path := fmt.Sprintf("/v1/user/%d", tgID)
-
-	var user models.User
-	if err := c.inner.GET(ctx, path, &user); err != nil {
-		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 404 {
-			return &models.User{
-				TgID:  tgID,
-				TgTag: tgTag,
-			}, nil // пользователь не найден
-		}
-		return nil, fmt.Errorf("get user by telegram id %d: %w", tgID, err)
-	}
-	return &user, nil
-}
-
-func (c *Client) CreateUser(ctx context.Context, u tgbotapi.Update) (*models.User, error) {
+func (c *Client) CreateUser(ctx context.Context, tgID int64, tgTag string) (*models.User, error) {
 	req := models.UserCreateRequest{
-		TgID:  u.SentFrom().ID,
-		TgTag: u.SentFrom().UserName,
+		TgID:  tgID,
+		TgTag: tgTag,
 	}
+
 	path := "/v1/user/"
 
 	var user models.User
+
 	if err := c.inner.POST(ctx, path, req, &user); err != nil {
-		return nil, &httpclient.APIError{Message: fmt.Sprintf("User creation failed:\n\t%s", err.Error())}
+		return nil, fmt.Errorf("create user: %w", err)
 	}
 	return &user, nil
 }
 
-func (c *Client) PatchUserStatus(newStatus string, tgID int64, ctx context.Context) (*models.User, error) {
-
-	req := models.UserStatusUpdateRequest{
-		Status: newStatus,
-	}
-	path := fmt.Sprintf("/v1/user/%d", tgID)
-
-	var user *models.User
-	if err := c.inner.PATCH(ctx, path, req, &user); err != nil {
-		return nil, &httpclient.APIError{Message: fmt.Sprintf("Update user status failed:\n\t%s", err.Error())}
-	}
-	return user, nil
-}
-
-func (c *Client) Delete(tgID int64, ctx context.Context) error {
-
+func (c *Client) DeleteUser(ctx context.Context, tgID int64) error {
 	path := fmt.Sprintf("/v1/user/%d", tgID)
 
 	if err := c.inner.DELETE(ctx, path, nil); err != nil {
-		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 404 {
+		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == http.StatusNotFound {
 			return nil
 		}
-		return fmt.Errorf("Delete user %d: %w", tgID, err)
+		return fmt.Errorf("delete user %d: %w", tgID, err)
 	}
 	return nil
 }
 
-func (c *Client) CreateExercise(req models.ExerciseCreateRequest, ctx context.Context) (*models.Exercise, error) {
+func (c *Client) GetUser(ctx context.Context, tgID int64, tgTag string) (*models.User, error) {
+	path := fmt.Sprintf("/v1/user/%d", tgID)
+
+	var user models.User
+
+	if err := c.inner.GET(ctx, path, &user); err != nil {
+		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == http.StatusNotFound {
+			return &models.User{
+				TgID:  tgID,
+				TgTag: tgTag,
+			}, nil // пользователь не найден в базе
+		}
+		return nil, fmt.Errorf("get user %d: %w", tgID, err)
+	}
+	return &user, nil
+}
+
+func (c *Client) GetUserStrict(ctx context.Context, tgID int64) (*models.User, error) {
+	path := fmt.Sprintf("/v1/user/%d", tgID)
+
+	var user models.User
+
+	if err := c.inner.GET(ctx, path, &user); err != nil {
+		return nil, fmt.Errorf("get user %d: %w", tgID, err)
+	}
+	return &user, nil
+}
+
+func (c *Client) PatchUser(ctx context.Context, req models.UserPatchRequest) (*models.User, error) {
+	path := fmt.Sprintf("/v1/user/%d", req.TgID)
+
+	var user models.User
+
+	if err := c.inner.PATCH(ctx, path, req, &user); err != nil {
+		return nil, fmt.Errorf("patch user %d: %w", req.TgID, err)
+	}
+	return &user, nil
+}
+
+// PatchUserStatus – shortcut for PatchUser()
+func (c *Client) PatchUserStatus(ctx context.Context, tgID int64, status string) (*models.User, error) {
+	req := models.UserPatchRequest{
+		TgID:   tgID,
+		Status: &status,
+	}
+	return c.PatchUser(ctx, req)
+}
+
+// PatchUserContext – shortcut for PatchUser()
+func (c *Client) PatchUserContext(ctx context.Context, tgID int64, context string, contextData models.ContextData) (*models.User, error) {
+	req := models.UserPatchRequest{
+		TgID:        tgID,
+		Context:     &context,
+		ContextData: &contextData,
+	}
+	return c.PatchUser(ctx, req)
+}
+
+// ============================================================
+// УПРАЖНЕНИЯ (Exercise)
+// ============================================================
+
+func (c *Client) CreateExercise(ctx context.Context, tgID int64, name string) (*models.Exercise, error) {
+	req := models.ExerciseCreateRequest{
+		TgID: tgID,
+		Name: name,
+	}
+
 	path := "/v1/exercise/"
 
 	var exercise models.Exercise
+
 	if err := c.inner.POST(ctx, path, req, &exercise); err != nil {
-		return nil, &httpclient.APIError{Message: fmt.Sprintf("Exercise creation failed:\n\t%s", err.Error())}
+		return nil, fmt.Errorf("create exercise: %w", err)
 	}
 	return &exercise, nil
 }
 
-func (c *Client) PatchExercise(req models.ExercisePatchRequest, ctx context.Context) (*models.Exercise, error) {
-	path := fmt.Sprintf("/v1/exercise/%d", req.ID)
+func (c *Client) DeleteExercise(ctx context.Context, id int64) error {
+	path := fmt.Sprintf("/v1/exercise/%d", id)
+
+	if err := c.inner.DELETE(ctx, path, nil); err != nil {
+		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == http.StatusNotFound {
+			return nil
+		}
+		return fmt.Errorf("delete exercise %d: %w", id, err)
+	}
+	return nil
+}
+
+func (c *Client) GetExercise(ctx context.Context, id int64) (*models.Exercise, error) {
+	path := fmt.Sprintf("/v1/exercise/%d", id)
 
 	var exercise models.Exercise
-	if err := c.inner.PATCH(ctx, path, req, &exercise); err != nil {
-		return nil, &httpclient.APIError{Message: fmt.Sprintf("Exercise patch failed:\n\t%s", err.Error())}
+
+	if err := c.inner.GET(ctx, path, &exercise); err != nil {
+		return nil, fmt.Errorf("get exercise %d: %w", id, err)
 	}
 	return &exercise, nil
 }
 
-func (c *Client) ListExercisesByTgID(offset, limit int, tgID int64, ctx context.Context) (*[]models.Exercise, error) {
-	req := models.ExerciseListRequest{
-		TgID:   tgID,
-		Offset: offset,
-		Limit:  limit,
-		SortBy: "rating",
-		Order:  "desc",
-	}
-
+func (c *Client) ListExercises(ctx context.Context, tgID int64, offset, limit int, sortBy string, order string) (*[]models.Exercise, error) {
 	path := fmt.Sprintf("/v1/exercise/u/%d?offset=%d&limit=%d&sort=%s&order=%s",
-		req.TgID, req.Offset, req.Limit, req.SortBy, req.Order)
+		tgID, offset, limit, sortBy, models.Order(order))
 
 	var exercises []models.Exercise
+
 	if err := c.inner.GET(ctx, path, &exercises); err != nil {
-		return nil, &httpclient.APIError{Message: fmt.Sprintf("Exercises list failed:\n\t%s", err.Error())}
+		return nil, fmt.Errorf("list exercises for user %d: %w", tgID, err)
 	}
 	return &exercises, nil
 }
 
-func (c *Client) CountExercisesByTgID(tgID int64, ctx context.Context) (int, error) {
+func (c *Client) CountExercises(ctx context.Context, tgID int64) (int, error) {
 	path := fmt.Sprintf("/v1/exercise/u/%d/count", tgID)
 
-	var Response struct {
-		Count int
+	var Resp struct {
+		Count int `json:"count"`
 	}
 
-	if err := c.inner.GET(ctx, path, &Response); err != nil {
-		return 0, &httpclient.APIError{Message: fmt.Sprintf("Exercises count failed:\n\t%s", err.Error())}
+	if err := c.inner.GET(ctx, path, &Resp); err != nil {
+		return 0, fmt.Errorf("count exercises for user %d: %w", tgID, err)
 	}
-	return Response.Count, nil
+	return Resp.Count, nil
 }
 
-func (c *Client) PatchContext(tgID int64, context string, contextData models.ContextData, ctx context.Context) (*models.User, *httpclient.APIError) {
-	req := models.UserPatchRequest{
-		Context:     &context,
-		ContextData: &contextData,
-	}
-	path := fmt.Sprintf("/v1/user/%d", tgID)
+func (c *Client) PatchExercise(ctx context.Context, req models.ExercisePatchRequest) (*models.Exercise, error) {
+	path := fmt.Sprintf("/v1/exercise/%d", req.ID)
 
-	var user *models.User
-	if err := c.inner.PATCH(ctx, path, req, &user); err != nil {
-		return nil, &httpclient.APIError{Message: fmt.Sprintf("Update user status failed:\n\t%s", err.Error())}
+	var exercise models.Exercise
+
+	if err := c.inner.PATCH(ctx, path, req, &exercise); err != nil {
+		return nil, fmt.Errorf("patch exercise %d: %w", req.ID, err)
 	}
-	return user, nil
+	return &exercise, nil
 }
+
+// PatchExerciseRating – shortcut for PatchExercise()
+func (c *Client) PatchExerciseRating(ctx context.Context, id int64, rating int) (*models.Exercise, error) {
+	req := models.ExercisePatchRequest{
+		ID:     id,
+		Rating: &rating,
+	}
+	return c.PatchExercise(ctx, req)
+}
+
+// PatchExerciseWeightUnitPreference – shortcut for PatchExercise()
+func (c *Client) PatchExerciseWeightUnitPreference(ctx context.Context, id int64, unit models.WeightUnit) (*models.Exercise, error) {
+	s := string(unit)
+	req := models.ExercisePatchRequest{
+		ID:         id,
+		WeightUnit: &s,
+	}
+	return c.PatchExercise(ctx, req)
+}
+
+/*
+func (c *Client) ListExerciseEntries(exerciseID int, ctx context.Context) (*[]models.ExerciseEntry, error) {
+	path := fmt.Sprintf("/v1/exercise_entry/e/%d?offset=%d&limit=%d&sort=%s&order=%s", exerciseID)
+
+}
+*/

@@ -17,9 +17,9 @@ func RegisterExerciseRoutes(group *gin.RouterGroup, s *server.Server) {
 
 	exercise := group.Group("/exercise")
 	{
-		exercise.GET("/:id", handler.GetByID)
-		exercise.GET("/u/:tg_id", handler.ListByTgID)
-		exercise.GET("/u/:tg_id/count", handler.CountByTgID)
+		exercise.GET("/:id", handler.Get)
+		exercise.GET("/u/:tg_id", handler.List)
+		exercise.GET("/u/:tg_id/count", handler.Count)
 	}
 	{
 		exercise.POST("/", handler.Create)

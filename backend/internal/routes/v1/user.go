@@ -17,7 +17,7 @@ func RegisterUserRoutes(group *gin.RouterGroup, s *server.Server) {
 
 	user := group.Group("/user")
 	{
-		user.GET("/:tg_id", handler.GetByTgID)
+		user.GET("/:tg_id", handler.Get)
 	}
 	{
 		user.POST("/", handler.Create)

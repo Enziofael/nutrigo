@@ -21,7 +21,7 @@ func WeDontKnowYou(ctx tg.Context, u tgbotapi.Update) (tg.HandleStatus, *tg.BotE
 }
 
 func NewUsageRequest(ctx tg.Context, u tgbotapi.Update) (tg.HandleStatus, *tg.BotError) {
-	if _, err := ctx.Value("client").(*client.Client).CreateUser(ctx.C, u); err != nil {
+	if _, err := ctx.Value("client").(*client.Client).CreateUser(ctx.C, u.SentFrom().ID, u.SentFrom().UserName); err != nil {
 		return tg.StatusError, tg.NewBotErrorf("Can't get client at NewUsageRequest: %w", err)
 	}
 
@@ -49,7 +49,7 @@ func YourUsageRequestSend(ctx tg.Context, u tgbotapi.Update) (tg.HandleStatus, *
 }
 
 func ConfirmUsageRequest(ctx tg.Context, u tgbotapi.Update, tgID int64) (tg.HandleStatus, *tg.BotError) {
-	if _, err := ctx.Value("client").(*client.Client).PatchUserStatus(models.StatusConfirmed, tgID, ctx.C); err != nil {
+	if _, err := ctx.Value("client").(*client.Client).PatchUserStatus(ctx.C, tgID, models.StatusConfirmed); err != nil {
 		return tg.StatusError, tg.NewBotErrorf("Can't get client at ConfirmUsageRequest: %w", err)
 	}
 
@@ -66,7 +66,7 @@ func ConfirmUsageRequest(ctx tg.Context, u tgbotapi.Update, tgID int64) (tg.Hand
 }
 
 func RejectUsageRequest(ctx tg.Context, u tgbotapi.Update, tgID int64) (tg.HandleStatus, *tg.BotError) {
-	if err := ctx.Value("client").(*client.Client).Delete(tgID, ctx.C); err != nil {
+	if err := ctx.Value("client").(*client.Client).DeleteUser(ctx.C, tgID); err != nil {
 		return tg.StatusError, tg.NewBotErrorf("Can't get client at RejectUsageRequest: %w", err)
 	}
 
@@ -83,7 +83,7 @@ func RejectUsageRequest(ctx tg.Context, u tgbotapi.Update, tgID int64) (tg.Handl
 }
 
 func BlockUsageRequest(ctx tg.Context, u tgbotapi.Update, tgID int64) (tg.HandleStatus, *tg.BotError) {
-	if _, err := ctx.Value("client").(*client.Client).PatchUserStatus(models.StatusBanned, tgID, ctx.C); err != nil {
+	if _, err := ctx.Value("client").(*client.Client).PatchUserStatus(ctx.C, tgID, models.StatusBanned); err != nil {
 		return tg.StatusError, tg.NewBotErrorf("Can't get client at BlockUsageRequest: %w", err)
 	}
 

@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS exercises (
     rating INT NOT NULL DEFAULT 100
 );
 
+ALTER TABLE exercises
+ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
 CREATE INDEX IF NOT EXISTS idx_exercises_tg_id ON exercises(tg_id);
 
 CREATE TABLE IF NOT EXISTS exercise_entries (
@@ -24,7 +27,8 @@ CREATE TABLE IF NOT EXISTS exercise_sets (
     id SERIAL PRIMARY KEY,
     tg_id INT NOT NULL REFERENCES users(tg_id) ON DELETE CASCADE,
     entry_id INT NOT NULL REFERENCES exercise_entries(id) ON DELETE CASCADE,
-    weight DECIMAL NOT NULL,
+    weight_kg DECIMAL NOT NULL,
+    weight_lbs DECIMAL NOT NULL,
     reps INT NOT NULL,
     weight_unit VARCHAR NOT NULL
 );

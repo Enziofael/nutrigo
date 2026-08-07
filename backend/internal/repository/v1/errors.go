@@ -2,8 +2,8 @@ package repository
 
 import "errors"
 
-var ErrUserAlreadyExists = errors.New("user already exists")
-var ErrUserNotFound = errors.New("user not found")
-
-var ErrExerciseAlreadyExists = errors.New("user already exists")
-var ErrExerciseNotFound = errors.New("exercise not found")
+var ErrAlreadyExists = errors.New("already exists")
+var ErrNotFound = errors.New("not found")
+var ErrUnmarshalJSON = errors.New("can't unmarshall JSON")
+var ErrMarshalJSON = errors.New("can't marshal JSON")
+var ErrInvalidRequest = errors.New("invalid request")

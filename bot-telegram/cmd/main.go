@@ -40,7 +40,7 @@ func main() {
 		srv.Apply(tg.DefaultLogging(srv), "Logger")
 
 		srv.Apply(func(ctx tg.Context, update tgbotapi.Update, next tg.HandlerFunc) (status tg.HandleStatus, err *tg.BotError) {
-			u, er := clt.GetUser(ctx.C, update)
+			u, er := clt.GetUser(ctx.C, update.SentFrom().ID, update.SentFrom().UserName)
 			srv.Logger.Write(fmt.Sprintf("%v", u))
 			if er != nil {
 				return tg.StatusError, tg.NewBotErrorf("Can't get user at UserGet middleware: %w", er)
@@ -92,6 +92,7 @@ func main() {
 		training.Handle(tg.CallbackQuery(`^TENU$`), handlers.Training_Edit_Exercises_CreateForm_UP, "TENU")
 		training.Handle(tg.CallbackQuery(`^TEND$`), handlers.Training_Edit_Exercises_CreateForm_DOWN, "TEND")
 		training.Handle(tg.CallbackQuery(`^TENS$`), handlers.Training_Edit_Exercises_CreateForm_SAVE, "TENS")
+		training.Handle(tg.CallbackQuery(`^TEI\d*$`), handlers.Training_Edit_Exercise, "TEI")
 
 		training.Handle(matchers.UserContextEquals(`Training_Exercises_CreateForm`), handlers.Training_Input_Exercises_CreateForm, "TEN INPUT", tg.NewMiddleware(middlewares.DeleteSourceMessage, ""))
 

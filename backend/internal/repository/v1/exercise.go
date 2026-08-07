@@ -7,16 +7,15 @@ import (
 	"fmt"
 
 	models "github.com/Enziofael/nutrigo/shared/models/v1"
-	"github.com/lib/pq"
 )
 
 type ExerciseRepository interface {
-	GetByID(ctx context.Context, id int64) (*models.Exercise, error)
-	ListByTgID(ctx context.Context, req models.ExerciseListRequest) (*[]models.Exercise, error)
-	CountByTgID(ctx context.Context, tgID int64) (int, error)
 	Create(ctx context.Context, req models.ExerciseCreateRequest) (*models.Exercise, error)
-	Patch(ctx context.Context, ID int64, req models.ExercisePatchRequest) (*models.Exercise, error)
-	Delete(ctx context.Context, ID int64) error
+	Delete(ctx context.Context, req models.ExerciseDeleteRequest) error
+	Get(ctx context.Context, req models.ExerciseGetRequest) (*models.Exercise, error)
+	List(ctx context.Context, req models.ExerciseListRequest) (*[]models.Exercise, error)
+	Count(ctx context.Context, req models.ExerciseCountRequest) (int, error)
+	Patch(ctx context.Context, req models.ExercisePatchRequest, current *models.Exercise) (*models.Exercise, error)
 }
 
 type ExercisePostgresRepository struct {
@@ -27,73 +26,16 @@ func NewExercisePostgresRepository(db *sql.DB) *ExercisePostgresRepository {
 	return &ExercisePostgresRepository{db: db}
 }
 
-func (r *ExercisePostgresRepository) GetByID(ctx context.Context, id int64) (*models.Exercise, error) {
-	var ex models.Exercise
-	err := r.db.QueryRowContext(ctx, `
-		SELECT id, tg_id, name, description, technique, weight_unit 
-		FROM exercises 
-		WHERE id = $1
-	`, id).Scan(&ex.ID, &ex.TgID, &ex.Name, &ex.Description, &ex.Technique, &ex.WeightUnit)
-
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &ex, nil
-}
-
-func (r *ExercisePostgresRepository) ListByTgID(ctx context.Context, req models.ExerciseListRequest) (*[]models.Exercise, error) {
-	query := `
-		SELECT id, tg_id, name, description, technique, weight_unit 
-		FROM exercises 
-		WHERE 
-		tg_id = $1`
-
-	query += fmt.Sprintf(" ORDER BY %s %s", req.SortBy, req.Order)
-	query += fmt.Sprintf(" LIMIT %d OFFSET %d", req.Limit, req.Offset)
-
-	rows, err := r.db.QueryContext(ctx, query,
-		req.TgID)
-	if err != nil {
-		return nil, fmt.Errorf("list exercises: %w", err)
-	}
-	defer rows.Close()
-
-	var exercises []models.Exercise
-	for rows.Next() {
-		var ex models.Exercise
-		if err := rows.Scan(&ex.ID, &ex.TgID, &ex.Name, &ex.Description, &ex.Technique, &ex.WeightUnit); err != nil {
-			return nil, fmt.Errorf("scan exercise: %w", err)
-		}
-		exercises = append(exercises, ex)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration: %w", err)
-	}
-	return &exercises, nil
-}
-
-func (r *ExercisePostgresRepository) CountByTgID(ctx context.Context, tgID int64) (int, error) {
-	var count int
-	err := r.db.QueryRowContext(ctx, `
-		SELECT COUNT(*) 
-		FROM exercises 
-		WHERE tg_id = $1
-	`, tgID).Scan(&count)
-	if err != nil {
-		return 0, fmt.Errorf("count exercises: %w", err)
-	}
-	return count, nil
-}
+// =========================================================
+// CRUD REQUESTS
+// =========================================================
 
 func (r *ExercisePostgresRepository) Create(ctx context.Context, req models.ExerciseCreateRequest) (*models.Exercise, error) {
 	var e models.Exercise
 	err := r.db.QueryRowContext(ctx, `
 		INSERT INTO exercises (tg_id, name)
         VALUES ($1, $2) 
-		RETURNING id, tg_id, name, description, technique, weight_unit`,
+		RETURNING id, tg_id, name, description, technique, weight_unit, rating, created_at`,
 		req.TgID, req.Name).Scan(
 		&e.ID,
 		&e.TgID,
@@ -101,10 +43,56 @@ func (r *ExercisePostgresRepository) Create(ctx context.Context, req models.Exer
 		&e.Description,
 		&e.Technique,
 		&e.WeightUnit,
+		&e.Rating,
+		&e.CreatedAt,
 	)
 
-	if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
-		return nil, ErrExerciseAlreadyExists
+	if err != nil {
+		return nil, err
+	}
+
+	return &e, nil
+}
+
+func (r *ExercisePostgresRepository) Delete(ctx context.Context, req models.ExerciseDeleteRequest) (err error) {
+	result, err := r.db.ExecContext(ctx, `
+		DELETE 
+		FROM exercises 
+		WHERE id = $1`,
+		req.ID,
+	)
+
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("Can't Delete exercise with id = %d: %w", req.ID, ErrNotFound)
+	}
+
+	return nil
+}
+
+func (r *ExercisePostgresRepository) Get(ctx context.Context, req models.ExerciseGetRequest) (*models.Exercise, error) {
+	var e models.Exercise
+
+	err := r.db.QueryRowContext(ctx, `
+		SELECT id, tg_id, name, description, technique, weight_unit, rating, created_at
+		FROM exercises 
+		WHERE id = $1`,
+		req.ID).Scan(
+		&e.ID,
+		&e.TgID,
+		&e.Name,
+		&e.Description,
+		&e.Technique,
+		&e.WeightUnit,
+		&e.Rating,
+		&e.CreatedAt,
+	)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("Can't Get exercise with id = %d: %w", req.ID, ErrNotFound)
 	}
 	if err != nil {
 		return nil, err
@@ -113,15 +101,63 @@ func (r *ExercisePostgresRepository) Create(ctx context.Context, req models.Exer
 	return &e, nil
 }
 
-func (r *ExercisePostgresRepository) Patch(ctx context.Context, id int64, req models.ExercisePatchRequest) (*models.Exercise, error) {
-	current, err := r.GetByID(ctx, id)
+func (r *ExercisePostgresRepository) List(ctx context.Context, req models.ExerciseListRequest) (res *[]models.Exercise, err error) {
+	query := `
+		SELECT id, tg_id, name, description, technique, weight_unit, rating, created_at
+		FROM exercises 
+		WHERE 
+		tg_id = $1`
+
+	query += fmt.Sprintf(" ORDER BY %s %s", req.SortBy, req.Order)
+	query += fmt.Sprintf(" LIMIT %d OFFSET %d", req.Limit, req.Offset)
+
+	rows, err := r.db.QueryContext(ctx, query, req.TgID)
 	if err != nil {
 		return nil, err
 	}
-	if current == nil {
-		return nil, nil
+	defer rows.Close()
+
+	var exercises []models.Exercise
+	for rows.Next() {
+		var ex models.Exercise
+		if err := rows.Scan(
+			&ex.ID,
+			&ex.TgID,
+			&ex.Name,
+			&ex.Description,
+			&ex.Technique,
+			&ex.WeightUnit,
+			&ex.Rating,
+			&ex.CreatedAt); err != nil {
+			return nil, err
+		}
+		exercises = append(exercises, ex)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &exercises, nil
+}
+
+func (r *ExercisePostgresRepository) Count(ctx context.Context, req models.ExerciseCountRequest) (count int, err error) {
+	err = r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) 
+		FROM exercises 
+		WHERE tg_id = $1`,
+		req.TgID).Scan(
+		&count)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
+// При масштабировании может быть гонка данных и потерянные обновления (изменение между получаением current и обновлением)
+func (r *ExercisePostgresRepository) Patch(ctx context.Context, req models.ExercisePatchRequest, current *models.Exercise) (patched *models.Exercise, err error) {
 	if req.Name != nil {
 		current.Name = *req.Name
 	}
@@ -132,42 +168,36 @@ func (r *ExercisePostgresRepository) Patch(ctx context.Context, id int64, req mo
 		current.Technique = req.Technique
 	}
 	if req.WeightUnit != nil {
-		current.WeightUnit = *req.WeightUnit
+		current.WeightUnit = models.WeightUnit(*req.WeightUnit)
+	}
+	if req.Rating != nil {
+		current.Rating = *req.Rating
 	}
 
-	_, err = r.db.ExecContext(ctx, `
+	result, err := r.db.ExecContext(ctx, `
 		UPDATE exercises 
 		SET 
 		name = $1, 
 		description = $2, 
 		technique = $3, 
-		weight_unit = $4 
-		WHERE id = $5`,
+		weight_unit = $4,
+		rating = $5
+		WHERE id = $6`,
 		current.Name,
 		current.Description,
 		current.Technique,
 		current.WeightUnit,
-		id,
+		current.Rating,
+		req.ID,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("patch exercise: %w", err)
+		return nil, err
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return nil, fmt.Errorf("Can't Patch exercise with id = %d: %w", req.ID, ErrNotFound)
 	}
 
 	return current, nil
-}
-
-func (r *ExercisePostgresRepository) Delete(ctx context.Context, id int64) error {
-	result, err := r.db.ExecContext(ctx, `
-		DELETE 
-		FROM exercises 
-		WHERE id = $1`,
-		id)
-	if err != nil {
-		return fmt.Errorf("delete exercise: %w", err)
-	}
-	rows, _ := result.RowsAffected()
-	if rows == 0 {
-		return ErrExerciseNotFound
-	}
-	return nil
 }

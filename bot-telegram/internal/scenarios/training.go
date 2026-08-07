@@ -53,7 +53,7 @@ func Training_Send_MainMenu(ctx tg.Context, chatID int64) (tg.HandleStatus, *tg.
 
 	// Patching context to new message
 	client := ctx.Value("client").(*client.Client)
-	_, clierr := client.PatchContext(chatID, "Training_MainMenu", models.ContextData{MessageID: r.MessageID}, ctx.C)
+	_, clierr := client.PatchUserContext(ctx.C, chatID, "Training_MainMenu", models.ContextData{MessageID: r.MessageID})
 	if clierr != nil {
 		return tg.StatusError, tg.NewBotErrorf("Can't patch context to Training_MainMenu for user %d: %w", chatID, clierr)
 	}
@@ -65,7 +65,7 @@ func Training_Edit_MainMenu(ctx tg.Context, chatID int64, messageID int) (tg.Han
 
 	// Patching context
 	client := ctx.Value("client").(*client.Client)
-	_, clierr := client.PatchContext(chatID, "Training_MainMenu", models.ContextData{MessageID: messageID}, ctx.C)
+	_, clierr := client.PatchUserContext(ctx.C, chatID, "Training_MainMenu", models.ContextData{MessageID: messageID})
 	if clierr != nil {
 		return tg.StatusError, tg.NewBotErrorf("Can't patch context to Training_MainMenu for user %d: %w", chatID, clierr)
 	}
@@ -94,12 +94,12 @@ func Training_Edit_Exercises(ctx tg.Context, chatID int64, messageID int, page i
 
 	// Patching context
 	client := ctx.Value("client").(*client.Client)
-	if _, err := client.PatchContext(chatID, "Training_Exercises", models.ContextData{MessageID: messageID}, ctx.C); err != nil {
+	if _, err := client.PatchUserContext(ctx.C, chatID, "Training_Exercises", models.ContextData{MessageID: messageID}); err != nil {
 		return tg.StatusError, tg.NewBotErrorf("Can't patch context to Training_Exercises: %w", err)
 	}
 
 	// Getting page count
-	count, err := client.CountExercisesByTgID(chatID, ctx.C)
+	count, err := client.CountExercises(ctx.C, chatID)
 	if err != nil {
 		return tg.StatusError, tg.NewBotErrorf("Can't get exercises count at Training_Edit_Exercises: %w", err)
 	}
@@ -107,7 +107,7 @@ func Training_Edit_Exercises(ctx tg.Context, chatID int64, messageID int, page i
 	offset := page * exercisesPerPage
 
 	// Getting page
-	exercises, err := client.ListExercisesByTgID(offset, exercisesPerPage, chatID, ctx.C)
+	exercises, err := client.ListExercises(ctx.C, chatID, offset, exercisesPerPage, "rating", "desc")
 	if err != nil {
 		return tg.StatusError, tg.NewBotErrorf("Can't get exercises at Training_Edit_Exercises: %w", err)
 	}
@@ -137,7 +137,7 @@ func Training_Edit_Exercises_CreateForm(ctx tg.Context, chatID int64, contextDat
 
 	// Patching context
 	client := ctx.Value("client").(*client.Client)
-	if _, err := client.PatchContext(chatID, "Training_Exercises_CreateForm", contextData, ctx.C); err != nil {
+	if _, err := client.PatchUserContext(ctx.C, chatID, "Training_Exercises_CreateForm", contextData); err != nil {
 		return tg.StatusError, tg.NewBotErrorf("Can't patch context to Training_Exercises_CreateForm: %w", err)
 	}
 
@@ -176,7 +176,7 @@ func Training_Input_Exercises_CreateForm(ctx tg.Context, chatID int64, contextDa
 
 	// Patching context with applyed input
 	client := ctx.Value("client").(*client.Client)
-	if _, err := client.PatchContext(chatID, "Training_Exercises_CreateForm", contextData, ctx.C); err != nil {
+	if _, err := client.PatchUserContext(ctx.C, chatID, "Training_Exercises_CreateForm", contextData); err != nil {
 		return tg.StatusError, tg.NewBotErrorf("Can't patch context to Training_Exercises_CreateForm: %w", err)
 	}
 
@@ -190,14 +190,10 @@ func Training_Input_Exercises_CreateForm_Save(ctx tg.Context, chatID int64, cont
 		Description: contextData.Values["Description"],
 		Technique:   contextData.Values["Technique"],
 	}
-	createReq := models.ExerciseCreateRequest{
-		TgID: chatID,
-		Name: form.Name,
-	}
 
 	client := ctx.Value("client").(*client.Client)
 
-	e, err := client.CreateExercise(createReq, ctx.C)
+	e, err := client.CreateExercise(ctx.C, chatID, form.Name)
 	if err != nil {
 		return tg.StatusError, tg.NewBotErrorf("Can't create exercise at Training_Input_Exercises_CreateForm_Save: %w", err)
 	}
@@ -208,11 +204,43 @@ func Training_Input_Exercises_CreateForm_Save(ctx tg.Context, chatID int64, cont
 		Technique:   &form.Technique,
 	}
 
-	if _, err := client.PatchExercise(patchReq, ctx.C); err != nil {
+	if _, err := client.PatchExercise(ctx.C, patchReq); err != nil {
 		return tg.StatusError, tg.NewBotErrorf("Can't patch exercise at Training_Input_Exercises_CreateForm_Save: %w", err)
 	}
 
 	return Training_Edit_Exercises(ctx, chatID, contextData.MessageID, 0)
+}
+
+func Training_Edit_Exercise(ctx tg.Context, chatID int64, messageID int, exerciseID int64) (tg.HandleStatus, *tg.BotError) {
+	cd := models.ContextData{
+		MessageID: messageID,
+		Focus:     int(exerciseID),
+	}
+
+	// Patching context
+	client := ctx.Value("client").(*client.Client)
+	if _, err := client.PatchUserContext(ctx.C, chatID, "Training_Exercise", cd); err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't patch context to Training_Exercise: %w", err)
+	}
+
+	/*
+	exercise, err := client.GetExercise(ctx.C, exerciseID)
+	if err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't get exercise at Training_Edit_Exercise: %w", err)
+	}
+
+	// Creating editMsg
+	editMsg, boterr := f.Training_Edit_Exercise(exercise)
+	if boterr != nil {
+		return tg.StatusError, tg.NewBotErrorw("Can't fabricate editMsg at Training_Edit_Exercises_CreateForm", boterr)
+	}
+
+	// Requesting editing
+	if _, err := ctx.Bot.Request(editMsg); err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't request editMsg at Training_Edit_Exercises_CreateForm: %w", err)
+	}
+	*/
+	return tg.StatusOK, nil
 }
 
 // ===================================================================
@@ -221,7 +249,7 @@ func Training_Input_Exercises_CreateForm_Save(ctx tg.Context, chatID int64, cont
 
 func Training_Edit_Programms(ctx tg.Context, update tgbotapi.Update, page int) (tg.HandleStatus, *tg.BotError) {
 	client := ctx.Value("client").(*client.Client)
-	client.PatchContext(update.SentFrom().ID, "TrainingProgramms", models.ContextData{MessageID: update.CallbackQuery.Message.MessageID}, ctx.C)
+	client.PatchUserContext(ctx.C, update.SentFrom().ID, "TrainingProgramms", models.ContextData{MessageID: update.CallbackQuery.Message.MessageID}, )
 
 	pageCount := 1
 	programms := &[]models.Exercise{

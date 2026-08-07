@@ -290,6 +290,8 @@ func Training_ReplyMarkup_Exercises_CreateForm() (*a.InlineKeyboardMarkup, *tg.B
 	return &kb, nil
 }
 
+//func Training_Edit_Exercise()
+
 // ================================================
 // Programms
 // ================================================

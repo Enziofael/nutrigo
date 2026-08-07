@@ -2,7 +2,6 @@ package handler
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -21,54 +20,92 @@ func NewExerciseHandler(service *service.ExerciseService) *ExerciseHandler {
 	return &ExerciseHandler{service: service}
 }
 
-func (h *ExerciseHandler) GetByID(c *gin.Context) {
-	IDStr := c.Param("id")
-	if IDStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
+// =========================================================
+// CRUD HANDLERS
+// =========================================================
+
+func (h *ExerciseHandler) Create(c *gin.Context) {
+	var req models.ExerciseCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON: " + err.Error()})
 		return
 	}
 
-	id, err := strconv.ParseInt(IDStr, 10, 64)
+	exercise, err := h.service.Create(c.Request.Context(), req)
+
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		switch {
+		case errors.Is(err, repository.ErrInvalidRequest):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
 		return
 	}
 
-	exercise, err := h.service.GetByID(c.Request.Context(), int64(id))
+	c.JSON(http.StatusCreated, exercise)
+}
+
+func (h *ExerciseHandler) Delete(c *gin.Context) {
+	id, err := parseID(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if exercise == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "exercise not found"})
+	req := models.ExerciseDeleteRequest{ID: id}
+
+	err = h.service.Delete(c.Request.Context(), req)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": "exercise not found"})
+		case errors.Is(err, repository.ErrInvalidRequest):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+func (h *ExerciseHandler) Get(c *gin.Context) {
+	id, err := parseID(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	req := models.ExerciseGetRequest{ID: id}
+
+	exercise, err := h.service.Get(c.Request.Context(), req)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": "exercise not found"})
+		case errors.Is(err, repository.ErrInvalidRequest):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
 		return
 	}
 
 	c.JSON(http.StatusOK, exercise)
 }
 
-func (h *ExerciseHandler) ListByTgID(c *gin.Context) {
-	tgIDStr := c.Param("tg_id")
-	if tgIDStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tg_id is required"})
-		return
-	}
-
-	tgID, err := strconv.ParseInt(tgIDStr, 10, 64)
+func (h *ExerciseHandler) List(c *gin.Context) {
+	tgID, err := parseTgID(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tg_id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	sortBy := c.DefaultQuery("sort", "id")
-
-	order, err := models.ValidateOrder(c.DefaultQuery("order", "desc"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid order"})
-	}
-
+	sortBy := c.DefaultQuery("sort", "rating")
+	order := models.Order(c.DefaultQuery("order", "desc"))
 	req := models.ExerciseListRequest{
 		TgID:   tgID,
 		Limit:  limit,
@@ -77,114 +114,71 @@ func (h *ExerciseHandler) ListByTgID(c *gin.Context) {
 		Order:  order,
 	}
 
-	exercises, err := h.service.ListByTgID(c.Request.Context(), req)
+	exercises, err := h.service.List(c.Request.Context(), req)
+
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	if exercises == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "exercises not found"})
+		switch {
+		case errors.Is(err, repository.ErrInvalidRequest):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
 		return
 	}
 
 	c.JSON(http.StatusOK, exercises)
 }
 
-func (h *ExerciseHandler) CountByTgID(c *gin.Context) {
-	tgIDStr := c.Param("tg_id")
-	if tgIDStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tg_id is required"})
+func (h *ExerciseHandler) Count(c *gin.Context) {
+	tgID, err := parseTgID(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	req := models.ExerciseCountRequest{TgID: tgID}
 
-	tgID, err := strconv.ParseInt(tgIDStr, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tg_id"})
-		return
-	}
+	count, err := h.service.Count(c.Request.Context(), req)
 
-	count, err := h.service.CountByTgID(c.Request.Context(), tgID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		switch {
+		case errors.Is(err, repository.ErrInvalidRequest):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"count": count})
 }
 
-func (h *ExerciseHandler) Create(c *gin.Context) {
-	var req models.ExerciseCreateRequest
+func (h *ExerciseHandler) Patch(c *gin.Context) {
+	var req models.ExercisePatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON: " + err.Error()})
+		return
+	}
+
+	id, err := parseID(c)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	req.ID = id
 
-	exercise, err := h.service.Create(c.Request.Context(), req)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	exercise, err := h.service.Patch(c.Request.Context(), req)
 
-	c.JSON(http.StatusCreated, exercise)
-}
-
-func (h *ExerciseHandler) Patch(c *gin.Context) {
-	IDStr := c.Param("id")
-	if IDStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
-		return
-	}
-
-	ID, err := strconv.ParseInt(IDStr, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-		return
-	}
-
-	var req models.ExercisePatchRequest
-	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid patch request"})
-		return
-	}
-
-	exercise, err := h.service.Patch(c.Request.Context(), ID, req)
 	if err != nil {
 		switch {
-		case errors.Is(err, repository.ErrExerciseNotFound):
+		case errors.Is(err, repository.ErrNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"error": "exercise not found"})
-		case errors.Is(err, service.ErrInvalidRequest):
+		case errors.Is(err, repository.ErrInvalidRequest):
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update exercise"})
-		}
-		return
-	}
-	c.JSON(http.StatusOK, exercise)
-}
-
-func (h *ExerciseHandler) Delete(c *gin.Context) {
-	IDStr := c.Param("id")
-	if IDStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
-		return
-	}
-
-	ID, err := strconv.ParseInt(IDStr, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-		return
-	}
-
-	if err := h.service.Delete(c.Request.Context(), ID); err != nil {
-		switch {
-		case errors.Is(err, repository.ErrUserNotFound):
-			c.JSON(http.StatusNotFound, gin.H{"error": "exercise not found"})
-		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-			log.Println(err.Error())
 		}
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusOK, exercise)
 }

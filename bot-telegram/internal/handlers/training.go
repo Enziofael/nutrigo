@@ -117,6 +117,23 @@ func Training_Edit_Exercises_CreateForm_SAVE(ctx tg.Context, update tgbotapi.Upd
 	return scenarios.Training_Input_Exercises_CreateForm_Save(ctx, update.SentFrom().ID, contextData)
 }
 
+func Training_Edit_Exercise(ctx tg.Context, update tgbotapi.Update) (tg.HandleStatus, *tg.BotError) {
+	if update.CallbackQuery == nil {
+		return tg.StatusError, tg.NewBotError("Invalid routing to Training_Edit_Exercise. Expected CallbackQuery")
+	}
+
+	suff, found := strings.CutPrefix(update.CallbackData(), "TEI")
+	if !found {
+		return tg.StatusError, tg.NewBotError("Hasn't found prefix TEI")
+	}
+	exerciseID, err := strconv.ParseInt(suff, 10, 64)
+	if err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't parse exercise's ID: %w", err)
+	}
+
+	return scenarios.Training_Edit_Exercise(ctx, update.CallbackQuery.From.ID, update.CallbackQuery.Message.MessageID, exerciseID)
+}
+
 func Training_Edit_Programms(ctx tg.Context, update tgbotapi.Update) (tg.HandleStatus, *tg.BotError) {
 	if update.CallbackQuery == nil {
 		return tg.StatusError, tg.NewBotError("Invalid routing to Training_Edit_Programms. Expected CallbackQuery")
