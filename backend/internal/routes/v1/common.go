@@ -1,4 +1,4 @@
-package v1
+package routes
 
 import (
 	handler "github.com/Enziofael/nutrigo/backend/internal/handler/v1"

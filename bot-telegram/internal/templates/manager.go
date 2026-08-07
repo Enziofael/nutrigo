@@ -3,6 +3,7 @@ package templates
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	engine "github.com/Enziofael/nutrigo/bot-telegram/internal/templates/engines"
 )
@@ -50,6 +51,44 @@ func (m *Manager) Render(engineName, templateName string, data interface{}) (str
 	return buf.String(), nil
 }
 
+func (m *Manager) ParseValues(engineName, templateName string, dataString string) (map[string]string, error) {
+	eng, ok := m.engines[engineName]
+
+	if !ok {
+		return map[string]string{}, fmt.Errorf("Engine %s not found", engineName)
+	}
+
+	res := make(map[string]string, 0)
+	if err := eng.ParseValues(&res, templateName, dataString); err != nil {
+		return map[string]string{}, err
+	}
+
+	return res, nil
+}
+
 func (m *Manager) RenderHTML(name string, data interface{}) (string, error) {
 	return m.Render("html", name, data)
+}
+
+func (m *Manager) ParseValuesHTML(name string, data string) (map[string]string, error) {
+	return m.ParseValues("html", name, data)
+}
+
+func (m *Manager) WrapLineHTML(html string, lineNumber int, identifier, openTags, closeTags string) string {
+	lines := strings.Split(html, "\n")
+	headerLines := make([]int, 0)
+
+	for i, line := range lines {
+		if strings.Contains(line, identifier) {
+			headerLines = append(headerLines, i)
+		}
+	}
+
+	if lineNumber > 0 && lineNumber <= len(headerLines) {
+		prefix, line, _ := strings.Cut(lines[headerLines[lineNumber-1]], identifier)
+		line = prefix + identifier + openTags + line + closeTags
+		lines[headerLines[lineNumber-1]] = line
+	}
+
+	return strings.Join(lines, "\n")
 }

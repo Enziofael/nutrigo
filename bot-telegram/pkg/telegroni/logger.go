@@ -137,27 +137,21 @@ func NewLogger(writers ...*os.File) *Logger {
 }
 
 func (l *Logger) Log(log Log) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	l.checkAndWrite(l.out, log, l.Config.LogBehaviour)
 }
 
 func (l *Logger) Err(log Log) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	l.checkAndWrite(l.err, log, l.Config.ErrBehaviour)
 }
 
 func (l *Logger) FileWrite(log Log) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	l.checkAndWrite(l.file, log, l.Config.FileBehaviour)
 }
 
 func (l *Logger) checkAndWrite(str io.Writer, log Log, behaviour byte) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
 	var s string
 	var m byte
 
@@ -240,7 +234,7 @@ func getDelay(u tgbotapi.Update, handled time.Time) *time.Duration {
 	case u.EditedChannelPost != nil:
 		sendAt = u.EditedChannelPost.Time()
 	case u.CallbackQuery != nil && u.CallbackQuery.Message != nil:
-		sendAt = u.CallbackQuery.Message.Time()
+		return nil
 	}
 
 	if sendAt.IsZero() {
@@ -271,7 +265,7 @@ func getDetails(u tgbotapi.Update, err *BotError) string {
 	s := "id:" + strconv.Itoa(u.UpdateID) + " "
 
 	if err != nil {
-		s += "error:" + err.Error() + " "
+		s += "error:\"" + err.Error() + "\" "
 	}
 
 	if u.Message != nil && u.Message.Text != "" {
@@ -316,26 +310,15 @@ func getDetails(u tgbotapi.Update, err *BotError) string {
 	if u.Message != nil && u.Message.Sticker != nil {
 		s = s + "setName:\"" + u.Message.Sticker.SetName + "\" emoji:\"" + u.Message.Sticker.Emoji + "\" "
 	}
+	if u.CallbackQuery != nil {
+		s = s + "data:\"" + u.CallbackQuery.Data + "\" "
+	}
 	s = strings.ReplaceAll(s, "\n", " ")
 	return s
 }
 
 func getUsername(u tgbotapi.Update) string {
-	res := ""
-	switch {
-	case u.Message != nil:
-		res = u.Message.From.UserName
-	case u.EditedMessage != nil:
-		res = u.EditedMessage.From.UserName
-	case u.ChannelPost != nil:
-		res = u.ChannelPost.Chat.UserName
-	case u.EditedChannelPost != nil:
-		res = u.EditedChannelPost.From.UserName
-	case u.CallbackQuery != nil && u.CallbackQuery.Message != nil:
-		res = u.CallbackQuery.Message.From.UserName
-	default:
-		res = fmt.Sprintf("getUsernameError %#v", u)
-	}
+	res := u.SentFrom().UserName
 	return res
 }
 
@@ -378,7 +361,9 @@ func (l *Logger) formatDelay(delay *time.Duration, width int) string {
 	if !l.Config.Colored {
 		return s
 	}
-
+	if delay == nil {
+		return consts.ANSI_BG_BLACK + consts.ANSI_WHITE + s + consts.ANSI_RESET
+	}
 	if *delay < 2*time.Second {
 		return consts.ANSI_BG_WHITE + consts.ANSI_BLACK + s + consts.ANSI_RESET
 	}

@@ -1,16 +1,18 @@
 package telegroni
 
 import (
+	"regexp"
+
 	tgbotapi "github.com/OvyFlash/telegram-bot-api"
 )
 
-func IsMessage(ctx Context, update tgbotapi.Update) bool {
-	return update.Message != nil && !update.Message.IsCommand()
+func IsText(ctx Context, update tgbotapi.Update) bool {
+	return update.Message != nil && update.Message.Text != "" && !update.Message.IsCommand()
 }
 
-func Message(s string) MatchFunc {
+func Text(s string) MatchFunc {
 	return func(ctx Context, update tgbotapi.Update) bool {
-		return IsMessage(ctx, update) && update.Message.Text == s
+		return IsText(ctx, update) && update.Message.Text == s
 	}
 }
 
@@ -130,10 +132,11 @@ func IsCallbackQuery(ctx Context, update tgbotapi.Update) bool {
 	return update.CallbackQuery != nil
 }
 
-func CallbackQuery(data string) MatchFunc {
+func CallbackQuery(regexpPattern string) MatchFunc {
+	re := regexp.MustCompile(regexpPattern)
 	return func(ctx Context, update tgbotapi.Update) bool {
 		return IsCallbackQuery(ctx, update) &&
-			update.CallbackQuery.Data == data
+			re.Match([]byte(update.CallbackQuery.Data))
 	}
 }
 

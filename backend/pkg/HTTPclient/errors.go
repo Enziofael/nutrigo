@@ -1,6 +1,8 @@
 package httpclient
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type APIError struct {
 	StatusCode int
@@ -18,7 +20,7 @@ func (e *APIError) Error() string {
 }
 
 func (e *APIError) Unwrap() error {
-	return e.Err
+	return fmt.Errorf("%d %s: %w", e.StatusCode, e.Message, e.Err)
 }
 
 func IsNotFound(err error) bool {

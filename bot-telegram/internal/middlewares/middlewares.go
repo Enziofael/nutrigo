@@ -21,3 +21,20 @@ func VerifyUsagePermission(ctx tg.Context, update tgbotapi.Update, next tg.Handl
 	}
 	return next(ctx, update)
 }
+
+func DeleteSourceMessage(ctx tg.Context, update tgbotapi.Update, next tg.HandlerFunc) (status tg.HandleStatus, err *tg.BotError) {
+	var messageID int
+	switch {
+	case update.Message != nil:
+		messageID = update.Message.MessageID
+	case update.CallbackQuery != nil:
+		messageID = update.CallbackQuery.Message.MessageID
+	default:
+		return next(ctx, update)
+	}
+	del := tgbotapi.NewDeleteMessage(update.SentFrom().ID, messageID)
+	if _, err := ctx.Bot.Request(del); err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't request deletion at DeleteSourceMessage: %w", err)
+	}
+	return next(ctx, update)
+}
