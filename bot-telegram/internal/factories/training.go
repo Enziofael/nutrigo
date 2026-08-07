@@ -87,25 +87,32 @@ func Training_ReplyMarkup_MainMenu() (a.InlineKeyboardMarkup, *tg.BotError) {
 // Exercises
 // ===============================
 
-func Training_Send_Exercises(chatID int64, page int, pageCount int, exercises *[]models.Exercise) (a.MessageConfig, *tg.BotError) {
+func Training_Send_Exercises(chatID int64, page int, pageCount int, exercises *[]models.Exercise) (a.SendRichMessageConfig, *tg.BotError) {
 	// Rendering text
 	text, err := tmplManager.RenderHTML("TrainingExercises", nil)
 	if err != nil {
-		return a.MessageConfig{}, tg.NewBotErrorf("Can't render html at Training_Send_Exercises: %w", err)
+		return a.SendRichMessageConfig{}, tg.NewBotErrorf("Can't render html at Training_Send_Exercises: %w", err)
 	}
+	exerciseTables := "\n"
+	for _, exercise := range *exercises {
+		text, err := tmplManager.RenderHTML("TrainingExercises_ExerciseTable", exercise)
+		if err != nil {
+			return a.SendRichMessageConfig{}, tg.NewBotErrorf("Can't render html at Training_Send_Exercises: %w", err)
+		}
+		exerciseTables += "\n" + text
+	}
+	text += exerciseTables
 
-	// Creating editMsg
-	msg := a.NewMessage(chatID, text)
+	// Creating msg
+	rich := a.NewInputRichMessageHTML(text)
+	msg := a.NewSendRichMessage(chatID, rich)
 
 	// Creating keyboard
 	kb, boterr := Training_ReplyMarkup_Exercises(page, pageCount, exercises)
 	if boterr != nil {
-		return a.MessageConfig{}, tg.NewBotErrorw("Can't create keyboard at Training_Send_Exercises", boterr)
+		return a.SendRichMessageConfig{}, tg.NewBotErrorw("Can't create keyboard at Training_Send_Exercises", boterr)
 	}
 	msg.ReplyMarkup = kb
-
-	// Parse mode
-	msg.ParseMode = "HTML"
 
 	return msg, nil
 }
@@ -116,9 +123,27 @@ func Training_Edit_Exercises(chatID int64, messageID int, page int, pageCount in
 	if err != nil {
 		return a.EditMessageTextConfig{}, tg.NewBotErrorf("Can't render html at Training_Edit_Exercises: %w", err)
 	}
+	exerciseTables, err := tmplManager.RenderHTML("TrainingExercises_ExerciseTable_Head", nil)
+	if err != nil {
+		return a.EditMessageTextConfig{}, tg.NewBotErrorf("Can't render html at Training_Edit_Exercises: %w", err)
+	}
+	for _, exercise := range *exercises {
+		text, err := tmplManager.RenderHTML("TrainingExercises_ExerciseTable_Body", exercise)
+		if err != nil {
+			return a.EditMessageTextConfig{}, tg.NewBotErrorf("Can't render html at Training_Edit_Exercises: %w", err)
+		}
+		exerciseTables += text
+	}
+	tail, err := tmplManager.RenderHTML("TrainingExercises_ExerciseTable_Tail", nil)
+	if err != nil {
+		return a.EditMessageTextConfig{}, tg.NewBotErrorf("Can't render html at Training_Edit_Exercises: %w", err)
+	}
+	text += exerciseTables + tail
 
 	// Creating editMsg
-	editMsg := a.NewEditMessageText(chatID, messageID, text)
+	rich := a.NewInputRichMessageHTML(text)
+	editMsg := a.NewEditMessageText(chatID, messageID, "")
+	editMsg.RichMessage = rich
 
 	// Creating keyboard
 	kb, boterr := Training_ReplyMarkup_Exercises(page, pageCount, exercises)
@@ -126,9 +151,6 @@ func Training_Edit_Exercises(chatID int64, messageID int, page int, pageCount in
 		return a.EditMessageTextConfig{}, tg.NewBotErrorw("Can't create keyboard at Training_Edit_Exercises", boterr)
 	}
 	editMsg.ReplyMarkup = kb
-
-	// Parse mode
-	editMsg.ParseMode = "HTML"
 
 	return editMsg, nil
 }
@@ -145,6 +167,9 @@ func Training_ReplyMarkup_Exercises(page int, pageCount int, exercises *[]models
 		Page      int
 		PageCount int
 	}{Page: page + 1, PageCount: pageCount}
+	if pageCount == 0 {
+		pages.Page = 0
+	}
 	textSearch, err := tmplManager.RenderHTML("TrainingExercisesReplyMarkup_Search", pages)
 	if err != nil {
 		return &a.InlineKeyboardMarkup{}, tg.NewBotErrorf("Can't render html at Training_ReplyMarkup_Exercises: %w", err)
@@ -184,7 +209,7 @@ func Training_ReplyMarkup_Exercises(page int, pageCount int, exercises *[]models
 	}
 	if page < pageCount-1 {
 		nextPage += 1
-		log.Printf("Previous %d", nextPage)
+		log.Printf("Next %d", nextPage)
 	}
 
 	var previousCBQData string = "-"
@@ -220,10 +245,8 @@ type CreateExerciseFormValues struct {
 	Name        string
 	Description string
 	Technique   string
+	Unit        string
 }
-
-// IMPORTANT: check template for valid value
-const FormValuesStartLine int = 3
 
 func Training_Edit_Exercises_CreateForm(chatID int64, contextData models.ContextData) (a.EditMessageTextConfig, *tg.BotError) {
 
@@ -234,7 +257,7 @@ func Training_Edit_Exercises_CreateForm(chatID int64, contextData models.Context
 	}
 
 	// Highlighting focused field
-	text = tmplManager.WrapLineHTML(text, contextData.Focus+FormValuesStartLine, "<b><u>", "</u></b>")
+	text = tmplManager.WrapLineHTML(text, contextData.Focus+1, "➡️</tg-emoji>", "<tg-emoji emoji-id=\"5215416746453776052\">🔴</tg-emoji> <u>", "</u>")
 
 	// Creating editMsg
 	editMsg := a.NewEditMessageText(chatID, contextData.MessageID, text)

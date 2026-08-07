@@ -30,11 +30,13 @@ func main() {
 
 	srv := tg.New(tg.NewConfig(cfg.GetBotToken()))
 
+	// Adding client
 	clt := client.New(cfg.GetBackendFullURL(), httpclient.ClientConfig{
 		APIToken: cfg.GetBackendAPIToken(),
 	})
 	srv.Context = srv.Context.WithValue("client", clt)
 
+	// Logger setup & UserGet middleware
 	{
 		srv.Logger.Config.LogBehaviour = tg.LogAll
 		srv.Apply(tg.DefaultLogging(srv), "Logger")
@@ -53,7 +55,6 @@ func main() {
 
 	callbackQuery := srv.Group(tg.IsCallbackQuery, "callbackQ")
 	{
-
 		callbackQuery.Handle(tg.CallbackQuery("user_usage_request"), tg.HandlerFuncStub, "userUsage_request")
 		callbackQuery.Handle(tg.CallbackQuery("^wdky"), handlers.CallbackQuery_wdky, "WDKY")
 		callbackQuery.Handle(tg.CallbackQuery("^nur"), handlers.CallbackQuery_nur, "NUR")
@@ -63,7 +64,7 @@ func main() {
 	{
 		command.Apply(middlewares.VerifyUsagePermission, "usagePermissionVerify")
 
-		command.Handle(tg.Command("start"), tg.HandlerFuncStub, "start")
+		command.Handle(tg.Command("start"), handlers.CommandStartHandler, "start")
 		command.Handle(tg.Command("admin"), tg.HandlerFuncStub, "admin")
 
 		command.Handle(tg.Command("ok"), handlers.OkHandler, "ok")
@@ -84,19 +85,77 @@ func main() {
 	{
 		training.Apply(middlewares.VerifyUsagePermission, "usagePermissionVerify")
 
-		training.Handle(tg.Text("🏋️"), handlers.Training_Send_MainMenu, "menu", tg.NewMiddleware(middlewares.DeleteSourceMessage, ""))
-		training.Handle(tg.CallbackQuery("^T$"), handlers.Training_Edit_MainMenu, "training")
+		cbq := training.Group(tg.IsCallbackQuery, "CBQ")
+		{
+			// Main training menu
+			cbq.Handle(tg.CallbackQuery("^T$"), handlers.Training_Edit_MainMenu, "training")
 
-		training.Handle(tg.CallbackQuery(`^TEP\d*$`), handlers.Training_Edit_Exercises, "TEP")
-		training.Handle(tg.CallbackQuery(`^TEN$`), handlers.Training_Edit_Exercises_CreateForm, "TEN")
-		training.Handle(tg.CallbackQuery(`^TENU$`), handlers.Training_Edit_Exercises_CreateForm_UP, "TENU")
-		training.Handle(tg.CallbackQuery(`^TEND$`), handlers.Training_Edit_Exercises_CreateForm_DOWN, "TEND")
-		training.Handle(tg.CallbackQuery(`^TENS$`), handlers.Training_Edit_Exercises_CreateForm_SAVE, "TENS")
-		training.Handle(tg.CallbackQuery(`^TEI\d*$`), handlers.Training_Edit_Exercise, "TEI")
+			// Exercises menu page \d
+			cbq.Handle(tg.CallbackQuery(`^TEP\d*$`), handlers.Training_Edit_Exercises, "TEP")
+			{
+				// Exercise create form
+				cbq.Handle(tg.CallbackQuery(`^TEN$`), handlers.Training_Edit_Exercises_CreateForm, "TEN")
+				// Exercise create form previous field (to up)
+				cbq.Handle(tg.CallbackQuery(`^TENU$`), handlers.Training_Edit_Exercises_CreateForm_UP, "TENU")
+				// Exercise create form next field (to down)
+				cbq.Handle(tg.CallbackQuery(`^TEND$`), handlers.Training_Edit_Exercises_CreateForm_DOWN, "TEND")
+				// Exercise create form weight unit preferences
+				cbq.Handle(tg.CallbackQuery(`^TEN_KG$`), handlers.Training_Edit_Exercises_CreateForm_KG, "TEN_KG")
+				cbq.Handle(tg.CallbackQuery(`^TEN_LBS$`), handlers.Training_Edit_Exercises_CreateForm_LBS, "TEN_LBS")
+				cbq.Handle(tg.CallbackQuery(`^TEN_MIX$`), handlers.Training_Edit_Exercises_CreateForm_MIXED, "TEN_MIX")
+				// Exercise create form save
+				cbq.Handle(tg.CallbackQuery(`^TENS$`), handlers.Training_Edit_Exercises_CreateForm_SAVE, "TENS")
+			}
+			{
+				// Exercise item menu id \d
+				cbq.Handle(tg.CallbackQuery(`^TEI\d*$`), handlers.Training_Edit_Exercise, "TEI")
+				{
+					// Exercise item edit form id \d
+					cbq.Handle(tg.CallbackQuery(`^TEE\d*$`), tg.HandlerFuncStub /*handlers.Training_Edit_Exercise_EditForm*/, "TEE")
+					// Exercise item edit form previous field (to up)
+					cbq.Handle(tg.CallbackQuery(`^TEEU\d*$`), tg.HandlerFuncStub /*handlers.Training_Edit_Exercise_EditForm_UP*/, "TEEU")
+					// Exercise item edit form next field (to down)
+					cbq.Handle(tg.CallbackQuery(`^TEED\d*$`), tg.HandlerFuncStub /*handlers.Training_Edit_Exercise_EditForm_DOWN*/, "TEED")
+					// Exercise item edit form save
+					cbq.Handle(tg.CallbackQuery(`^TEEU\d*$`), tg.HandlerFuncStub /*handlers.Training_Edit_Exercise_EditForm_SAVE*/, "TEEU")
+				}
+				{
+					// Exercise item delete form id \d
+					cbq.Handle(tg.CallbackQuery(`^TED\d*$`), tg.HandlerFuncStub /*handlers.Training_Edit_Exercise_DeleteForm*/, "TED")
+					// Exercise item delete form confirm
+					cbq.Handle(tg.CallbackQuery(`^TEDC\d*$`), tg.HandlerFuncStub /*handlers.Training_Edit_Exercise_DeleteForm_CONFIRM*/, "TEDC")
+				}
+				{
+					// ExerciseEntry create form (performing solo exercise) exercise id \d
+					cbq.Handle(tg.CallbackQuery(`^TEEnN\d*$`), tg.HandlerFuncStub /*handlers.Training_Edit_ExerciseEntry_CreateForm*/, "TEEnN")
 
-		training.Handle(matchers.UserContextEquals(`Training_Exercises_CreateForm`), handlers.Training_Input_Exercises_CreateForm, "TEN INPUT", tg.NewMiddleware(middlewares.DeleteSourceMessage, ""))
+				}
+			}
 
-		training.Handle(tg.CallbackQuery(`^TPP\d*$`), handlers.Training_Edit_Programms, "TPP")
+			// Programms menu page \d
+			cbq.Handle(tg.CallbackQuery(`^TPP\d*$`), handlers.Training_Edit_Programms, "TPP")
+			{
+				// Programm create form
+				cbq.Handle(tg.CallbackQuery(`^TPN$`), tg.HandlerFuncStub /*handlers.Training_Edit_Programms_CreateForm*/, "TPN")
+				// Programm create form previous field (to up)
+				cbq.Handle(tg.CallbackQuery(`^TPNU$`), tg.HandlerFuncStub /*handlers.Training_Edit_Programms_CreateForm_UP*/, "TPNU")
+				// Programm create form next field (to down)
+				cbq.Handle(tg.CallbackQuery(`^TPND$`), tg.HandlerFuncStub /*handlers.Training_Edit_Programms_CreateForm_DOWN*/, "TPND")
+				// Programm create form save
+				cbq.Handle(tg.CallbackQuery(`^TPNS$`), tg.HandlerFuncStub /*handlers.Training_Edit_Programms_CreateForm_SAVE*/, "TPNS")
+			}
+			{
+				// Programm item menu id \d
+				cbq.Handle(tg.CallbackQuery(`^TPI\d*$`), handlers.Training_Edit_Exercise, "TPI")
+			}
+		}
+
+		text := training.Group(tg.IsText, "TEXT")
+		{
+			text.Handle(tg.Text("🏋️"), handlers.Training_Send_MainMenu, "menu", tg.NewMiddleware(middlewares.DeleteSourceMessage, ""))
+			text.Handle(matchers.UserContextEquals(`Training_Exercises_CreateForm`), handlers.Training_Input_Exercises_CreateForm, "TEN INPUT", tg.NewMiddleware(middlewares.DeleteSourceMessage, ""))
+		}
+
 	}
 
 	calendar := srv.Group(tg.IsAny, "calendar")

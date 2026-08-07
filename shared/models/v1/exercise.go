@@ -29,7 +29,7 @@ func SanitizeWeightUnitString(s string) (string, error) {
 	case string(WeightUnit_Mixed):
 		return string(WeightUnit_Mixed), nil
 	default:
-		return string(WeightUnit_Kg), InvalidWeightUnit
+		return string(WeightUnit_Kg), fmt.Errorf("%w: %s", InvalidWeightUnit, s)
 	}
 }
 
@@ -148,11 +148,11 @@ type ExercisePatchRequest struct {
 	ID int64 `json:"id" binding:"required,min=1"`
 
 	//body optional (at least 1)
-	Name        *string `json:"name,omitempty"         binding:"max=140"`
-	Description *string `json:"description,omitempty"  binding:"max=1000"`
-	Technique   *string `json:"technique,omitempty"    binding:"url"`
-	WeightUnit  *string `json:"weight_unit,omitempty"`
-	Rating      *int    `json:"rating,omitempty"       binding:"min=-100,max=100"`
+	Name        *string `json:"name,omitempty"         binding:"omitempty,max=140"`
+	Description *string `json:"description,omitempty"  binding:"omitempty,max=1000"`
+	Technique   *string `json:"technique,omitempty"    binding:"omitempty,url"`
+	WeightUnit  *string `json:"weight_unit,omitempty"  binding:"omitempty"`
+	Rating      *int    `json:"rating,omitempty"       binding:"omitempty,min=-100,max=100"`
 }
 
 func (req ExercisePatchRequest) Sanitize() (ExercisePatchRequest, error) {

@@ -55,6 +55,7 @@ func Training_Edit_Exercises_CreateForm(ctx tg.Context, update tgbotapi.Update) 
 	contextData := ctx.Value("user").(*models.User).ContextData
 	if contextData.MessageID == 0 || len(contextData.Values) == 0 {
 		contextData = models.ContextData{MessageID: update.CallbackQuery.Message.MessageID, Values: make(map[string]string)}
+		contextData.Values["Unit"] = string(models.WeightUnit_Kg)
 	}
 
 	return scenarios.Training_Edit_Exercises_CreateForm(ctx, update.CallbackQuery.From.ID, contextData)
@@ -92,6 +93,39 @@ func Training_Edit_Exercises_CreateForm_DOWN(ctx tg.Context, update tgbotapi.Upd
 	}
 
 	return scenarios.Training_Edit_Exercises_CreateForm(ctx, update.CallbackQuery.From.ID, contextData)
+}
+
+func Training_Edit_Exercises_CreateForm_KG(ctx tg.Context, update tgbotapi.Update) (tg.HandleStatus, *tg.BotError) {
+	if update.CallbackQuery == nil {
+		return tg.StatusError, tg.NewBotError("Invalid routing to Training_Edit_Exercises_CreateForm_KG. Expected CallbackQuery")
+	}
+
+	contextData := ctx.Value("user").(*models.User).ContextData
+	contextData.Values["Unit"] = string(models.WeightUnit_Kg)
+
+	return scenarios.Training_Edit_Exercises_CreateForm(ctx, update.SentFrom().ID, contextData)
+}
+
+func Training_Edit_Exercises_CreateForm_LBS(ctx tg.Context, update tgbotapi.Update) (tg.HandleStatus, *tg.BotError) {
+	if update.CallbackQuery == nil {
+		return tg.StatusError, tg.NewBotError("Invalid routing to Training_Edit_Exercises_CreateForm_LBS. Expected CallbackQuery")
+	}
+
+	contextData := ctx.Value("user").(*models.User).ContextData
+	contextData.Values["Unit"] = string(models.WeightUnit_Lbs)
+
+	return scenarios.Training_Edit_Exercises_CreateForm(ctx, update.SentFrom().ID, contextData)
+}
+
+func Training_Edit_Exercises_CreateForm_MIXED(ctx tg.Context, update tgbotapi.Update) (tg.HandleStatus, *tg.BotError) {
+	if update.CallbackQuery == nil {
+		return tg.StatusError, tg.NewBotError("Invalid routing to Training_Edit_Exercises_CreateForm_MIXED. Expected CallbackQuery")
+	}
+
+	contextData := ctx.Value("user").(*models.User).ContextData
+	contextData.Values["Unit"] = string(models.WeightUnit_Mixed)
+
+	return scenarios.Training_Edit_Exercises_CreateForm(ctx, update.SentFrom().ID, contextData)
 }
 
 func Training_Input_Exercises_CreateForm(ctx tg.Context, update tgbotapi.Update) (tg.HandleStatus, *tg.BotError) {

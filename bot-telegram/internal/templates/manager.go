@@ -3,6 +3,7 @@ package templates
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"strings"
 
 	engine "github.com/Enziofael/nutrigo/bot-telegram/internal/templates/engines"
@@ -74,11 +75,24 @@ func (m *Manager) ParseValuesHTML(name string, data string) (map[string]string, 
 	return m.ParseValues("html", name, data)
 }
 
-func (m *Manager) WrapLineHTML(html string, lineNumber int, openTags, closeTags string) string {
+func (m *Manager) WrapLineHTML(html string, lineNumber int, identifier, openTags, closeTags string) string {
 	lines := strings.Split(html, "\n")
-	if lineNumber < 1 || lineNumber > len(lines) {
-		return html
+	log.Println(lines)
+	headerLines := make([]int, 0)
+
+	for i, line := range lines {
+		if strings.Contains(line, identifier) {
+			headerLines = append(headerLines, i)
+			log.Printf("Line %d has prefix. headerLines[%d] = %d\n", i, len(headerLines)-1, i)
+		}
 	}
-	lines[lineNumber-1] = openTags + lines[lineNumber-1] + closeTags
+
+	log.Printf("lineNumber = %d. len(headerLines) = %d", lineNumber, len(headerLines))
+	if lineNumber > 0 && lineNumber <= len(headerLines) {
+		prefix, line, _ := strings.Cut(lines[headerLines[lineNumber-1]], identifier)
+		line = prefix + identifier + openTags + line + closeTags
+		lines[headerLines[lineNumber-1]] = line
+	}
+
 	return strings.Join(lines, "\n")
 }

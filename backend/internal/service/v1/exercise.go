@@ -68,7 +68,7 @@ func (s *ExerciseService) Count(ctx context.Context, req models.ExerciseCountReq
 func (s *ExerciseService) Patch(ctx context.Context, req models.ExercisePatchRequest) (*models.Exercise, error) {
 	req, err := req.Sanitize()
 	if err != nil {
-		return nil, fmt.Errorf("%w Count at exercise service: %w", repository.ErrInvalidRequest, err)
+		return nil, fmt.Errorf("%w Patch at exercise service: %w", repository.ErrInvalidRequest, err)
 	}
 
 	existing, err := s.repo.Get(ctx, models.ExerciseGetRequest{ID: req.ID})

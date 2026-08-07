@@ -42,13 +42,13 @@ func Training_Send_MainMenu(ctx tg.Context, chatID int64) (tg.HandleStatus, *tg.
 	// Creating msg
 	msg, boterr := f.Training_Send_MainMenu(chatID)
 	if boterr != nil {
-		return tg.StatusError, tg.NewBotErrorw("Can't fabricate trining menu", boterr)
+		return tg.StatusError, tg.NewBotErrorw("Can't fabricate training menu", boterr)
 	}
 
 	// Sending msg
 	r, err := ctx.Bot.Send(msg)
 	if err != nil {
-		return tg.StatusError, tg.NewBotErrorf("Can't send trining menu: %w", err)
+		return tg.StatusError, tg.NewBotErrorf("Can't send training menu: %w", err)
 	}
 
 	// Patching context to new message
@@ -88,7 +88,7 @@ func Training_Edit_MainMenu(ctx tg.Context, chatID int64, messageID int) (tg.Han
 // Exercises
 // ===================================================================
 
-const exercisesPerPage int = 5
+const exercisesPerPage int = 4
 
 func Training_Edit_Exercises(ctx tg.Context, chatID int64, messageID int, page int) (tg.HandleStatus, *tg.BotError) {
 
@@ -103,7 +103,10 @@ func Training_Edit_Exercises(ctx tg.Context, chatID int64, messageID int, page i
 	if err != nil {
 		return tg.StatusError, tg.NewBotErrorf("Can't get exercises count at Training_Edit_Exercises: %w", err)
 	}
-	pageCount := count/exercisesPerPage + 1
+	pageCount := 0
+	if count > 0 {
+		pageCount = (count + exercisesPerPage - 1) / exercisesPerPage
+	}
 	offset := page * exercisesPerPage
 
 	// Getting page
@@ -189,6 +192,7 @@ func Training_Input_Exercises_CreateForm_Save(ctx tg.Context, chatID int64, cont
 		Name:        contextData.Values["Name"],
 		Description: contextData.Values["Description"],
 		Technique:   contextData.Values["Technique"],
+		Unit:        contextData.Values["Unit"],
 	}
 
 	client := ctx.Value("client").(*client.Client)
@@ -202,9 +206,11 @@ func Training_Input_Exercises_CreateForm_Save(ctx tg.Context, chatID int64, cont
 		ID:          e.ID,
 		Description: &form.Description,
 		Technique:   &form.Technique,
+		WeightUnit:  &form.Unit,
 	}
 
 	if _, err := client.PatchExercise(ctx.C, patchReq); err != nil {
+		_ = client.DeleteExercise(ctx.C, patchReq.ID)
 		return tg.StatusError, tg.NewBotErrorf("Can't patch exercise at Training_Input_Exercises_CreateForm_Save: %w", err)
 	}
 
@@ -224,21 +230,21 @@ func Training_Edit_Exercise(ctx tg.Context, chatID int64, messageID int, exercis
 	}
 
 	/*
-	exercise, err := client.GetExercise(ctx.C, exerciseID)
-	if err != nil {
-		return tg.StatusError, tg.NewBotErrorf("Can't get exercise at Training_Edit_Exercise: %w", err)
-	}
+		exercise, err := client.GetExercise(ctx.C, exerciseID)
+		if err != nil {
+			return tg.StatusError, tg.NewBotErrorf("Can't get exercise at Training_Edit_Exercise: %w", err)
+		}
 
-	// Creating editMsg
-	editMsg, boterr := f.Training_Edit_Exercise(exercise)
-	if boterr != nil {
-		return tg.StatusError, tg.NewBotErrorw("Can't fabricate editMsg at Training_Edit_Exercises_CreateForm", boterr)
-	}
+		// Creating editMsg
+		editMsg, boterr := f.Training_Edit_Exercise(exercise)
+		if boterr != nil {
+			return tg.StatusError, tg.NewBotErrorw("Can't fabricate editMsg at Training_Edit_Exercises_CreateForm", boterr)
+		}
 
-	// Requesting editing
-	if _, err := ctx.Bot.Request(editMsg); err != nil {
-		return tg.StatusError, tg.NewBotErrorf("Can't request editMsg at Training_Edit_Exercises_CreateForm: %w", err)
-	}
+		// Requesting editing
+		if _, err := ctx.Bot.Request(editMsg); err != nil {
+			return tg.StatusError, tg.NewBotErrorf("Can't request editMsg at Training_Edit_Exercises_CreateForm: %w", err)
+		}
 	*/
 	return tg.StatusOK, nil
 }
@@ -249,7 +255,7 @@ func Training_Edit_Exercise(ctx tg.Context, chatID int64, messageID int, exercis
 
 func Training_Edit_Programms(ctx tg.Context, update tgbotapi.Update, page int) (tg.HandleStatus, *tg.BotError) {
 	client := ctx.Value("client").(*client.Client)
-	client.PatchUserContext(ctx.C, update.SentFrom().ID, "TrainingProgramms", models.ContextData{MessageID: update.CallbackQuery.Message.MessageID}, )
+	client.PatchUserContext(ctx.C, update.SentFrom().ID, "TrainingProgramms", models.ContextData{MessageID: update.CallbackQuery.Message.MessageID})
 
 	pageCount := 1
 	programms := &[]models.Exercise{
