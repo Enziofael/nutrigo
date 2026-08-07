@@ -60,3 +60,10 @@ CREATE TABLE IF NOT EXISTS training_program_days_exercises (
     exercise_id INT NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
     PRIMARY KEY (training_programm_day_id, exercise_id)
 );
+
+
+-- для поиска
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE INDEX IF NOT EXISTS idx_exercises_name_trgm ON exercises USING GIN (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_exercises_description_trgm ON exercises USING GIN (description gin_trgm_ops);

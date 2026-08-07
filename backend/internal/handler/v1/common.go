@@ -22,6 +22,7 @@ func (h *CommonHandler) Ping(c *gin.Context) {
 	_, err := h.service.Ping(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"ping": "pong",

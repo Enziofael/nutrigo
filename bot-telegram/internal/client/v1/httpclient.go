@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	httpclient "github.com/Enziofael/nutrigo/backend/pkg/HTTPclient"
 	models "github.com/Enziofael/nutrigo/shared/models/v1"
@@ -209,9 +210,15 @@ func (c *Client) PatchExerciseWeightUnitPreference(ctx context.Context, id int64
 	return c.PatchExercise(ctx, req)
 }
 
-/*
-func (c *Client) ListExerciseEntries(exerciseID int, ctx context.Context) (*[]models.ExerciseEntry, error) {
-	path := fmt.Sprintf("/v1/exercise_entry/e/%d?offset=%d&limit=%d&sort=%s&order=%s", exerciseID)
+func (c *Client) SearchExercises(ctx context.Context, tgID int64, search string, offset, limit int, sortBy string, order string) (*models.ExerciseSearchResponse, error) {
+	encoded := url.QueryEscape(search)
+	path := fmt.Sprintf("/v1/exercise/u/%d?search=%s&offset=%d&limit=%d&sort=%s&order=%s",
+		tgID, encoded, offset, limit, sortBy, models.Order(order))
 
+	var responce models.ExerciseSearchResponse
+
+	if err := c.inner.GET(ctx, path, &responce); err != nil {
+		return nil, fmt.Errorf("search exercises for user %d: %w", tgID, err)
+	}
+	return &responce, nil
 }
-*/

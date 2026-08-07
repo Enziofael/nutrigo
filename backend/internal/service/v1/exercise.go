@@ -56,6 +56,15 @@ func (s *ExerciseService) List(ctx context.Context, req models.ExerciseListReque
 	return s.repo.List(ctx, req)
 }
 
+func (s *ExerciseService) Search(ctx context.Context, req models.ExerciseSearchRequest) (*models.ExerciseSearchResponse, error) {
+	req, err := req.Sanitize()
+	if err != nil {
+		return nil, fmt.Errorf("%w Search at exercise service: %w", repository.ErrInvalidRequest, err)
+	}
+
+	return s.repo.Search(ctx, req)
+}
+
 func (s *ExerciseService) Count(ctx context.Context, req models.ExerciseCountRequest) (int, error) {
 	req, err := req.Sanitize()
 	if err != nil {

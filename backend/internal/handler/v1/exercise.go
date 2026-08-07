@@ -129,6 +129,45 @@ func (h *ExerciseHandler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, exercises)
 }
 
+func (h *ExerciseHandler) Search(c *gin.Context) {
+	if c.Query("search") == "" {
+		h.List(c)
+	}
+
+	tgID, err := parseTgID(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	search := c.Query("search")
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	sortBy := c.DefaultQuery("sort", "similarity")
+	order := models.Order(c.DefaultQuery("order", "desc"))
+	req := models.ExerciseSearchRequest{
+		TgID:   tgID,
+		Search: search,
+		Limit:  limit,
+		Offset: offset,
+		SortBy: sortBy,
+		Order:  order,
+	}
+
+	searchRes, err := h.service.Search(c.Request.Context(), req)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrInvalidRequest):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, searchRes)
+}
+
 func (h *ExerciseHandler) Count(c *gin.Context) {
 	tgID, err := parseTgID(c)
 	if err != nil {

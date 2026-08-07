@@ -32,6 +32,14 @@ func SanitizeName(name string) (string, error) {
 	return clean, nil
 }
 
+func SanitizeSearch(search string) (string, error) {
+	clean := strings.Join(strings.Fields(search), " ")
+	if clean == "" {
+		return "", fmt.Errorf("Search can't be empty")
+	}
+	return clean, nil
+}
+
 func SanitizeDescription(Desc string) (string, error) {
 	clean := strings.TrimSpace(Desc)
 	if len(clean) > MaxDescriptionLength {
@@ -66,6 +74,10 @@ func SanitizeLimit(limit int) (int, error) {
 }
 
 func SanitizeUrl(raw string) (string, error) {
+	if raw == "" {
+		return raw, nil
+	}
+
 	cleaned := strings.TrimSpace(raw)
 	original := cleaned
 

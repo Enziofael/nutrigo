@@ -26,8 +26,6 @@ func init() {
 			log.Printf("- Loaded succesfully after attempt #%v with path %v", i, envPath)
 			return
 		} else {
-			log.Printf("- Error loading .env file: %s", err)
-
 			if i == maxAttempts-1 {
 				log.Fatalf("Fatal error loading .env file after %v attempts: %s", i, err)
 			}

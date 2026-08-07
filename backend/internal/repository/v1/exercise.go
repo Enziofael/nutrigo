@@ -14,6 +14,7 @@ type ExerciseRepository interface {
 	Delete(ctx context.Context, req models.ExerciseDeleteRequest) error
 	Get(ctx context.Context, req models.ExerciseGetRequest) (*models.Exercise, error)
 	List(ctx context.Context, req models.ExerciseListRequest) (*[]models.Exercise, error)
+	Search(ctx context.Context, req models.ExerciseSearchRequest) (*models.ExerciseSearchResponse, error)
 	Count(ctx context.Context, req models.ExerciseCountRequest) (int, error)
 	Patch(ctx context.Context, req models.ExercisePatchRequest, current *models.Exercise) (*models.Exercise, error)
 }
@@ -139,6 +140,93 @@ func (r *ExercisePostgresRepository) List(ctx context.Context, req models.Exerci
 	}
 
 	return &exercises, nil
+}
+
+const searchThreshold float64 = 0.1
+
+// sort by "similarity"
+func (r *ExercisePostgresRepository) Search(ctx context.Context, req models.ExerciseSearchRequest) (*models.ExerciseSearchResponse, error) {
+	whereClause := `tg_id = $1 AND (
+        similarity(name, $2) > $3 OR
+        similarity(COALESCE(description, ''), $2) > $3
+    )`
+
+	countQuery := `SELECT COUNT(*) FROM exercises WHERE ` + whereClause
+	var total int
+	err := r.db.QueryRowContext(ctx,
+		countQuery,
+		req.TgID,
+		req.Search,
+		searchThreshold,
+	).Scan(&total)
+	if err != nil {
+		return nil, fmt.Errorf("count exercises: %w", err)
+	}
+
+	if total == 0 {
+		return &models.ExerciseSearchResponse{
+			Search:    req.Search,
+			Count:     0,
+			Exercises: []models.Exercise{},
+		}, nil
+	}
+
+	selectFields := `
+        id, tg_id, name, description, technique, weight_unit, rating, created_at
+    `
+	rankField := `GREATEST(
+        similarity(name, $2),
+        similarity(COALESCE(description, ''), $2)
+    ) AS rank`
+
+	orderClause := ""
+	if req.SortBy == "similarity" {
+		orderClause = `ORDER BY rank ` + string(req.Order)
+		selectFields = selectFields + `, ` + rankField
+	} else {
+		orderClause = fmt.Sprintf(`ORDER BY %s %s`, req.SortBy, req.Order)
+	}
+
+	dataQuery := fmt.Sprintf(`
+        SELECT %s
+        FROM exercises
+        WHERE %s
+        %s
+        OFFSET $4
+        LIMIT $5
+    `, selectFields, whereClause, orderClause)
+
+	rows, err := r.db.QueryContext(ctx, dataQuery,
+		//$1=TgID, $2=Search, $3=threshold, $4=Offset, $5=Limit
+		req.TgID, req.Search, searchThreshold, req.Offset, req.Limit)
+	if err != nil {
+		return nil, fmt.Errorf("search exercises: %w", err)
+	}
+	defer rows.Close()
+
+	var exercises []models.Exercise
+	for rows.Next() {
+		var ex models.Exercise
+
+		err = rows.Scan(
+			&ex.ID, &ex.TgID, &ex.Name, &ex.Description, &ex.Technique,
+			&ex.WeightUnit, &ex.Rating, &ex.CreatedAt,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("scan exercise: %w", err)
+		}
+		exercises = append(exercises, ex)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration: %w", err)
+	}
+
+	return &models.ExerciseSearchResponse{
+		Search:    req.Search,
+		Count:     total,
+		Exercises: exercises,
+	}, nil
 }
 
 func (r *ExercisePostgresRepository) Count(ctx context.Context, req models.ExerciseCountRequest) (count int, err error) {

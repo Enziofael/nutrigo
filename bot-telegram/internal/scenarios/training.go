@@ -3,6 +3,8 @@ package scenarios
 import (
 	//client "github.com/Enziofael/nutrigo/bot-telegram/internal/client/v1"
 
+	"strconv"
+
 	"github.com/Enziofael/nutrigo/bot-telegram/internal/client/v1"
 	f "github.com/Enziofael/nutrigo/bot-telegram/internal/factories"
 	tg "github.com/Enziofael/nutrigo/bot-telegram/pkg/telegroni"
@@ -130,6 +132,62 @@ func Training_Edit_Exercises(ctx tg.Context, chatID int64, messageID int, page i
 	return tg.StatusOK, nil
 }
 
+func Training_Input_Exercises(ctx tg.Context, chatID int64, contextData models.ContextData, input string) (tg.HandleStatus, *tg.BotError) {
+
+	contextData.Values = make(map[string]string)
+	contextData.Values["Search"] = input
+	contextData.Values["Count"] = "0"
+
+	// Patching context
+	client := ctx.Value("client").(*client.Client)
+	if _, err := client.PatchUserContext(ctx.C, chatID, "Training_Exercises_Search", contextData); err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't patch context to Training_Exercises_Search: %w", err)
+	}
+
+	return tg.StatusOK, nil
+}
+
+func Training_Edit_Exercises_Search(ctx tg.Context, chatID int64, page int) (tg.HandleStatus, *tg.BotError) {
+	client := ctx.Value("client").(*client.Client)
+	u, err := client.GetUserStrict(ctx.C, chatID)
+	if err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't get user's context at Training_Edit_Exercises_Search: %w", err)
+	}
+	contextData := u.ContextData
+
+	offset := page * exercisesPerPage
+
+	// Getting page
+	searchRes, err := client.SearchExercises(ctx.C, chatID, contextData.Values["Search"], offset, exercisesPerPage, "rating", "desc")
+	if err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't get exercises at Training_Edit_Exercises: %w", err)
+	}
+
+	// Updating count
+	contextData.Values["Count"] = strconv.FormatInt(int64(searchRes.Count), 10)
+	if _, err := client.PatchUserContext(ctx.C, chatID, "Training_Exercises_Search", contextData); err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't patch context to Training_Exercises_Search: %w", err)
+	}
+
+	pageCount := 0
+	if searchRes.Count > 0 {
+		pageCount = (searchRes.Count + exercisesPerPage - 1) / exercisesPerPage
+	}
+
+	// Creating editMsg
+	editMsg, boterr := f.Training_Edit_Exercises_Search(chatID, contextData.MessageID, page, pageCount, searchRes)
+	if boterr != nil {
+		return tg.StatusError, tg.NewBotErrorw("Can't fabricate editMsg at Training_Edit_Exercises_Search", boterr)
+	}
+
+	// Requesting editing
+	if _, err := ctx.Bot.Request(editMsg); err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't request editMsg at Training_Edit_Exercises_Search: %w", err)
+	}
+
+	return tg.StatusOK, nil
+}
+
 func Training_Edit_Exercises_CreateForm(ctx tg.Context, chatID int64, contextData models.ContextData) (tg.HandleStatus, *tg.BotError) {
 	if contextData.Focus < 0 {
 		contextData.Focus = 2
@@ -159,7 +217,9 @@ func Training_Edit_Exercises_CreateForm(ctx tg.Context, chatID int64, contextDat
 }
 
 func Training_Input_Exercises_CreateForm(ctx tg.Context, chatID int64, contextData models.ContextData, input string) (tg.HandleStatus, *tg.BotError) {
-
+	if input == "-" {
+		input = ""
+	}
 	// Apply input
 	switch contextData.Focus {
 	case 0:
@@ -177,7 +237,7 @@ func Training_Input_Exercises_CreateForm(ctx tg.Context, chatID int64, contextDa
 		contextData.Focus = 0
 	}
 
-	// Patching context with applyed input
+	// Patching context with applied input
 	client := ctx.Value("client").(*client.Client)
 	if _, err := client.PatchUserContext(ctx.C, chatID, "Training_Exercises_CreateForm", contextData); err != nil {
 		return tg.StatusError, tg.NewBotErrorf("Can't patch context to Training_Exercises_CreateForm: %w", err)
@@ -208,6 +268,12 @@ func Training_Input_Exercises_CreateForm_Save(ctx tg.Context, chatID int64, cont
 		Technique:   &form.Technique,
 		WeightUnit:  &form.Unit,
 	}
+	if form.Description == "" {
+		patchReq.Description = nil
+	}
+	if form.Technique == "" {
+		patchReq.Technique = nil
+	}
 
 	if _, err := client.PatchExercise(ctx.C, patchReq); err != nil {
 		_ = client.DeleteExercise(ctx.C, patchReq.ID)
@@ -215,6 +281,125 @@ func Training_Input_Exercises_CreateForm_Save(ctx tg.Context, chatID int64, cont
 	}
 
 	return Training_Edit_Exercises(ctx, chatID, contextData.MessageID, 0)
+}
+
+func Training_Edit_Exercises_EditForm(ctx tg.Context, chatID int64, contextData models.ContextData) (tg.HandleStatus, *tg.BotError) {
+	if contextData.Focus < 0 {
+		contextData.Focus = 2
+	}
+	if contextData.Focus > 2 {
+		contextData.Focus = 0
+	}
+
+	// Patching context
+	client := ctx.Value("client").(*client.Client)
+	if _, err := client.PatchUserContext(ctx.C, chatID, "Training_Exercises_EditForm", contextData); err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't patch context to Training_Exercises_EditForm: %w", err)
+	}
+
+	// Creating editMsg
+	editMsg, boterr := f.Training_Edit_Exercises_EditForm(chatID, contextData)
+	if boterr != nil {
+		return tg.StatusError, tg.NewBotErrorw("Can't fabricate editMsg at Training_Edit_Exercises_EditForm", boterr)
+	}
+
+	// Requesting editing
+	if _, err := ctx.Bot.Request(editMsg); err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't request editMsg at Training_Edit_Exercises_EditForm: %w", err)
+	}
+
+	return tg.StatusOK, nil
+}
+
+func Training_Input_Exercises_EditForm(ctx tg.Context, chatID int64, contextData models.ContextData, input string) (tg.HandleStatus, *tg.BotError) {
+	if input == "-" {
+		input = ""
+	}
+	// Apply input
+	switch contextData.Focus {
+	case 0:
+		contextData.Values["Name"] = input
+	case 1:
+		contextData.Values["Description"] = input
+	case 2:
+		contextData.Values["Technique"] = input
+	}
+	contextData.Focus = contextData.Focus + 1
+	if contextData.Focus < 0 {
+		contextData.Focus = 2
+	}
+	if contextData.Focus > 2 {
+		contextData.Focus = 0
+	}
+
+	// Patching context with applied input
+	client := ctx.Value("client").(*client.Client)
+	if _, err := client.PatchUserContext(ctx.C, chatID, "Training_Exercises_EditForm", contextData); err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't patch context to Training_Exercises_EditForm: %w", err)
+	}
+
+	// Editing form message
+	return Training_Edit_Exercises_EditForm(ctx, chatID, contextData)
+}
+
+func Training_Input_Exercises_EditForm_Save(ctx tg.Context, chatID int64, contextData models.ContextData) (tg.HandleStatus, *tg.BotError) {
+	exerciseID, err := strconv.ParseInt(contextData.Values["ExerciseID"], 10, 64)
+	if err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't parse exercise id from context: %w", err)
+	}
+
+	form := f.EditExerciseFormValues{
+		ID:          exerciseID,
+		Name:        contextData.Values["Name"],
+		Description: contextData.Values["Description"],
+		Technique:   contextData.Values["Technique"],
+		Unit:        contextData.Values["Unit"],
+	}
+
+	client := ctx.Value("client").(*client.Client)
+
+	patchReq := models.ExercisePatchRequest{
+		ID:          form.ID,
+		Name:        &form.Name,
+		Description: &form.Description,
+		Technique:   &form.Technique,
+		WeightUnit:  &form.Unit,
+	}
+	if form.Description == "" {
+		patchReq.Description = nil
+	}
+	if form.Technique == "" {
+		patchReq.Technique = nil
+	}
+
+	if _, err := client.PatchExercise(ctx.C, patchReq); err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't patch exercise at Training_Input_Exercises_EditForm_Save: %w", err)
+	}
+
+	return Training_Edit_Exercise(ctx, chatID, contextData.MessageID, exerciseID)
+}
+
+func Training_Edit_Exercise_DeleteForm(ctx tg.Context, chatID int64, messageID int, exercise *models.Exercise) (tg.HandleStatus, *tg.BotError) {
+	// Creating editMsg
+	editMsg, boterr := f.Training_Edit_Exercise_DeleteForm(chatID, messageID, exercise)
+	if boterr != nil {
+		return tg.StatusError, tg.NewBotErrorw("Can't fabricate editMsg at Training_Edit_Exercise_DeleteForm", boterr)
+	}
+
+	// Requesting editing
+	if _, err := ctx.Bot.Request(editMsg); err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't request editMsg at Training_Edit_Exercise_DeleteForm: %w", err)
+	}
+
+	return tg.StatusOK, nil
+}
+
+func Training_Edit_Exercise_DeleteForm_CONFIRM(ctx tg.Context, chatID int64, messageID int, exerciseID int64) (tg.HandleStatus, *tg.BotError) {
+	client := ctx.Value("client").(*client.Client)
+	if err := client.DeleteExercise(ctx.C, exerciseID); err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't delete exercise at Training_Edit_Exercise_DeleteForm_CONFIRM: %w", err)
+	}
+	return Training_Edit_Exercises(ctx, chatID, messageID, 0)
 }
 
 func Training_Edit_Exercise(ctx tg.Context, chatID int64, messageID int, exerciseID int64) (tg.HandleStatus, *tg.BotError) {
@@ -229,23 +414,22 @@ func Training_Edit_Exercise(ctx tg.Context, chatID int64, messageID int, exercis
 		return tg.StatusError, tg.NewBotErrorf("Can't patch context to Training_Exercise: %w", err)
 	}
 
-	/*
-		exercise, err := client.GetExercise(ctx.C, exerciseID)
-		if err != nil {
-			return tg.StatusError, tg.NewBotErrorf("Can't get exercise at Training_Edit_Exercise: %w", err)
-		}
+	exercise, err := client.GetExercise(ctx.C, exerciseID)
+	if err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't get exercise at Training_Edit_Exercise: %w", err)
+	}
 
-		// Creating editMsg
-		editMsg, boterr := f.Training_Edit_Exercise(exercise)
-		if boterr != nil {
-			return tg.StatusError, tg.NewBotErrorw("Can't fabricate editMsg at Training_Edit_Exercises_CreateForm", boterr)
-		}
+	// Creating editMsg
+	editMsg, boterr := f.Training_Edit_Exercise(chatID, messageID, exercise)
+	if boterr != nil {
+		return tg.StatusError, tg.NewBotErrorw("Can't fabricate editMsg at Training_Edit_Exercises_CreateForm", boterr)
+	}
 
-		// Requesting editing
-		if _, err := ctx.Bot.Request(editMsg); err != nil {
-			return tg.StatusError, tg.NewBotErrorf("Can't request editMsg at Training_Edit_Exercises_CreateForm: %w", err)
-		}
-	*/
+	// Requesting editing
+	if _, err := ctx.Bot.Request(editMsg); err != nil {
+		return tg.StatusError, tg.NewBotErrorf("Can't request editMsg at Training_Edit_Exercises_CreateForm: %w", err)
+	}
+
 	return tg.StatusOK, nil
 }
 

@@ -188,3 +188,38 @@ func (req ExercisePatchRequest) Sanitize() (ExercisePatchRequest, error) {
 	err := errors.Join(errID, errName, errDescription, errTechnique, errWeightUnit, errRating)
 	return req, err
 }
+
+// Search by user
+type ExerciseSearchRequest struct {
+	//url
+	TgID int64 `json:"tg_id"  binding:"required,min=1"`
+
+	//body
+	Search string `json:"search" binding:"required"`
+	Offset int    `json:"offset" binding:"required,min=0"`
+	Limit  int    `json:"limit"  binding:"required,max=100"`
+	SortBy string `json:"sort"   binding:"required"`
+	Order  Order  `json:"order"  binding:"required"`
+}
+
+type ExerciseSearchResponse struct {
+	Search    string
+	Count     int        `json:"count" binding:"required,min=0"`
+	Exercises []Exercise `json:"exercises" binding:"omitempty"`
+}
+
+func (req ExerciseSearchRequest) Sanitize() (ExerciseSearchRequest, error) {
+	var errTgID, errSearch, errOffset, errLimit, errSortBy, errOrder error
+
+	req.Search, errSearch = SanitizeSearch(req.Search)
+	req.TgID, errTgID = SanitizeTgID(req.TgID)
+	req.Offset, errOffset = SanitizeOffset(req.Offset)
+	req.Limit, errLimit = SanitizeLimit(req.Limit)
+	if req.SortBy != "similarity" {
+		req.SortBy, errSortBy = SanitizeExerciseSortBy(req.SortBy)
+	}
+	req.Order, errOrder = SanitizeOrder(req.Order)
+
+	err := errors.Join(errTgID, errSearch, errOffset, errLimit, errSortBy, errOrder)
+	return req, err
+}

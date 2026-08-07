@@ -18,7 +18,8 @@ func RegisterExerciseRoutes(group *gin.RouterGroup, s *server.Server) {
 	exercise := group.Group("/exercise")
 	{
 		exercise.GET("/:id", handler.Get)
-		exercise.GET("/u/:tg_id", handler.List)
+		//if search == "" handler.Search -> handler.List
+		exercise.GET("/u/:tg_id", handler.Search)
 		exercise.GET("/u/:tg_id/count", handler.Count)
 	}
 	{

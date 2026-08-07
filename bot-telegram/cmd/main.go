@@ -3,7 +3,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	httpclient "github.com/Enziofael/nutrigo/backend/pkg/HTTPclient"
@@ -43,7 +42,6 @@ func main() {
 
 		srv.Apply(func(ctx tg.Context, update tgbotapi.Update, next tg.HandlerFunc) (status tg.HandleStatus, err *tg.BotError) {
 			u, er := clt.GetUser(ctx.C, update.SentFrom().ID, update.SentFrom().UserName)
-			srv.Logger.Write(fmt.Sprintf("%v", u))
 			if er != nil {
 				return tg.StatusError, tg.NewBotErrorf("Can't get user at UserGet middleware: %w", er)
 			}
@@ -92,6 +90,8 @@ func main() {
 
 			// Exercises menu page \d
 			cbq.Handle(tg.CallbackQuery(`^TEP\d*$`), handlers.Training_Edit_Exercises, "TEP")
+			// Exercises search page \d
+			cbq.Handle(tg.CallbackQuery(`^TES\d*$`), handlers.Training_Edit_Exercises_Search, "TES")
 			{
 				// Exercise create form
 				cbq.Handle(tg.CallbackQuery(`^TEN$`), handlers.Training_Edit_Exercises_CreateForm, "TEN")
@@ -111,19 +111,23 @@ func main() {
 				cbq.Handle(tg.CallbackQuery(`^TEI\d*$`), handlers.Training_Edit_Exercise, "TEI")
 				{
 					// Exercise item edit form id \d
-					cbq.Handle(tg.CallbackQuery(`^TEE\d*$`), tg.HandlerFuncStub /*handlers.Training_Edit_Exercise_EditForm*/, "TEE")
+					cbq.Handle(tg.CallbackQuery(`^TEE\d*$`), handlers.Training_Edit_Exercises_EditForm, "TEE")
 					// Exercise item edit form previous field (to up)
-					cbq.Handle(tg.CallbackQuery(`^TEEU\d*$`), tg.HandlerFuncStub /*handlers.Training_Edit_Exercise_EditForm_UP*/, "TEEU")
+					cbq.Handle(tg.CallbackQuery(`^TEEU\d*$`), handlers.Training_Edit_Exercises_EditForm_UP, "TEEU")
 					// Exercise item edit form next field (to down)
-					cbq.Handle(tg.CallbackQuery(`^TEED\d*$`), tg.HandlerFuncStub /*handlers.Training_Edit_Exercise_EditForm_DOWN*/, "TEED")
+					cbq.Handle(tg.CallbackQuery(`^TEED\d*$`), handlers.Training_Edit_Exercises_EditForm_DOWN, "TEED")
+					// Exercise create form weight unit preferences
+					cbq.Handle(tg.CallbackQuery(`^TEE_KG$`), handlers.Training_Edit_Exercises_EditForm_KG, "TEE_KG")
+					cbq.Handle(tg.CallbackQuery(`^TEE_LBS$`), handlers.Training_Edit_Exercises_EditForm_LBS, "TEE_LBS")
+					cbq.Handle(tg.CallbackQuery(`^TEE_MIX$`), handlers.Training_Edit_Exercises_EditForm_MIXED, "TEE_MIX")
 					// Exercise item edit form save
-					cbq.Handle(tg.CallbackQuery(`^TEEU\d*$`), tg.HandlerFuncStub /*handlers.Training_Edit_Exercise_EditForm_SAVE*/, "TEEU")
+					cbq.Handle(tg.CallbackQuery(`^TEES\d*$`), handlers.Training_Edit_Exercises_EditForm_SAVE, "TEEU")
 				}
 				{
 					// Exercise item delete form id \d
-					cbq.Handle(tg.CallbackQuery(`^TED\d*$`), tg.HandlerFuncStub /*handlers.Training_Edit_Exercise_DeleteForm*/, "TED")
+					cbq.Handle(tg.CallbackQuery(`^TED\d*$`), handlers.Training_Edit_Exercise_DeleteForm, "TED")
 					// Exercise item delete form confirm
-					cbq.Handle(tg.CallbackQuery(`^TEDC\d*$`), tg.HandlerFuncStub /*handlers.Training_Edit_Exercise_DeleteForm_CONFIRM*/, "TEDC")
+					cbq.Handle(tg.CallbackQuery(`^TEDC\d*$`), handlers.Training_Edit_Exercise_DeleteForm_CONFIRM, "TEDC")
 				}
 				{
 					// ExerciseEntry create form (performing solo exercise) exercise id \d
@@ -153,7 +157,10 @@ func main() {
 		text := training.Group(tg.IsText, "TEXT")
 		{
 			text.Handle(tg.Text("🏋️"), handlers.Training_Send_MainMenu, "menu", tg.NewMiddleware(middlewares.DeleteSourceMessage, ""))
+			text.Handle(matchers.UserContextEquals(`Training_Exercises`), handlers.Training_Input_Exercises, "TEP INPUT", tg.NewMiddleware(middlewares.DeleteSourceMessage, ""))
+			text.Handle(matchers.UserContextEquals(`Training_Exercises_Search`), handlers.Training_Input_Exercises, "TEP INPUT", tg.NewMiddleware(middlewares.DeleteSourceMessage, ""))
 			text.Handle(matchers.UserContextEquals(`Training_Exercises_CreateForm`), handlers.Training_Input_Exercises_CreateForm, "TEN INPUT", tg.NewMiddleware(middlewares.DeleteSourceMessage, ""))
+			text.Handle(matchers.UserContextEquals(`Training_Exercises_EditForm`), handlers.Training_Input_Exercises_EditForm, "TEE INPUT", tg.NewMiddleware(middlewares.DeleteSourceMessage, ""))
 		}
 
 	}
@@ -174,10 +181,15 @@ func main() {
 	{
 		settings.Apply(middlewares.VerifyUsagePermission, "usagePermissionVerify")
 		settings.Handle(tg.Text("⚙️"), tg.HandlerFuncStub, "settings", tg.NewMiddleware(middlewares.DeleteSourceMessage, ""))
+		// Отображение предпросмотра ссылок
+		// Количество вывода упражнение на страницу
 	}
 
 	{
 		srv.Handle(tg.CallbackQuery("-"), handlers.IgnoreHandler, "skipping callback")
+		srv.Handle(tg.IsText, tg.HandlerFuncStub, "Any text stub",
+			tg.NewMiddleware(middlewares.VerifyUsagePermission, "usagePermissionVerify"),
+			tg.NewMiddleware(middlewares.DeleteSourceMessage, ""))
 		srv.Handle(tg.Any(), tg.HandlerFuncStub, "Any stub", tg.NewMiddleware(middlewares.VerifyUsagePermission, "usagePermissionVerify"))
 	}
 
