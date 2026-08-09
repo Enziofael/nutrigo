@@ -9,21 +9,21 @@ import (
 // =========================================================
 
 type User struct {
-	TgID   int64      `json:"tg_id"`
-	TgTag  string     `json:"tg_tag"`
-	Status UserStatus `json:"status"`
+	TgID   int64      `json:"tg_id"  binding:"required"`
+	TgTag  string     `json:"tg_tag" binding:"required"`
+	Status UserStatus `json:"status" binding:"required,oneof=unknown requested confirmed restricted banned admin"` //SYNC WITH [UserStatus]
 
-	CreatedAt      time.Time   `json:"created_at,omitempty"`
-	LastMessagedAt time.Time   `json:"last_messaged_at,omitempty"`
-	Context        string      `json:"context,omitempty"`
-	ContextData    ContextData `json:"context_data,omitempty"`
-	Exercises      []Exercise  `json:"exercises,omitempty"`
+	CreatedAt      time.Time   `json:"created_at,omitempty"       binding:"omitempty,min=0"`
+	LastMessagedAt time.Time   `json:"last_messaged_at,omitempty" binding:"omitempty,min=0"`
+	Context        string      `json:"context,omitempty"`       //binding any
+	ContextData    ContextData `json:"context_data,omitempty"`  //binding any
+	Exercises      []Exercise  `json:"exercises,omitempty"        binding:"omitempty,dive"`
 }
 
 type ContextData struct {
-	MessageID int               `json:"message_id"`
-	Focus     int               `json:"focus"`
-	Values    map[string]string `json:"values,omitempty"`
+	MessageID int               `json:"message_id"         binding="required"`
+	Focus     int               `json:"focus"`           //binding any
+	Values    map[string]string `json:"values,omitempty"`//binding any
 }
 
 // =========================================================
@@ -45,10 +45,10 @@ type ContextData struct {
 // Query:
 //   - [ include ] = "" | "created_at,last_messaged_at" (Any combination)
 type UserCreateRequest struct {
-	TgID  int64  `json:"tg_id"`
-	TgTag string `json:"tg_tag"`
+	TgID  int64  `json:"tg_id"  binding="required"`
+	TgTag string `json:"tg_tag" binding="required,min=3,max=100"`
 
-	Include string `json:"-"`
+	Include string `json:"-" form:"include"`
 }
 type UserCreateResponse struct {
 	User User `json:"user"`
@@ -60,19 +60,19 @@ type UserCreateResponse struct {
 // users
 //
 // Query:
-//   - [ offset ] = 0 | >= 0
 //   - [ limit ] = 10 | 0 - 100
+//   - [ offset ] = 0 | >= 0
 //   - [ sort ] = "last_messaged_at" | "last_messaged_at,created_at" (1)
 //   - [ order ] = "DESC" | "ASC,DESC" (1)
 //   - [ search ] = "" | Any search string (encode!)
 //   - [ include ] = "" | "created_at,last_messaged_at,context" (Any combination)
 type UserListRequest struct {
-	Offset  int    `json:"-"`
-	Limit   int    `json:"-"`
-	Sort    string `json:"-"`
-	Order   Order  `json:"-"`
-	Search  string `json:"-"`
-	Include string `json:"-"`
+	Limit   int    `json:"-" form:"limit"   binding:"omitempty,min=1,max=100"`
+	Offset  int    `json:"-" form:"offset"  binding:"omitempty,min=0"`
+	Sort    string `json:"-" form:"sort"    binding:"omitempty,oneof=last_messaged_at created_at"`
+	Order   Order  `json:"-" form:"order"   binding:"omitempty,oneof=ASC DESC"`
+	Search  string `json:"-" form:"search"`
+	Include string `json:"-" form:"include"`
 }
 type UserListResponse struct {
 	Users  []User `json:"users"`
@@ -100,9 +100,9 @@ type UserListResponse struct {
 //
 // <exercises_params>: see [ExerciseListRequest] query params (encode!)
 type UserGetRequest struct {
-	TgID int64 `json:"-"`
+	TgID int64 `json:"-" uri="id" binding="required"`
 
-	Include string `json:"-"`
+	Include string `json:"-" form:"include"`
 }
 type UserGetResponse struct {
 	User User `json:"user"`
@@ -127,14 +127,14 @@ type UserGetResponse struct {
 //
 // <exercises_params>: see [ExerciseListRequest] query params (encode!)
 type UserPatchRequest struct {
-	TgID int64 `json:"-"`
+	TgID int64 `json:"-" uri:"id" binding="required"`
 
-	TgTag       *string      `json:"tg_tag,omitempty"`
-	Status      *UserStatus  `json:"status,omitempty"`
+	TgTag       *string      `json:"tg_tag,omitempty"       binding="omitempty,min=3,max=100"`
+	Status      *UserStatus  `json:"status,omitempty"       binding="omitempty,oneof=unknown requested confirmed restricted banned admin"` //SYNC WITH [UserStatus]
 	Context     *string      `json:"context,omitempty"`
 	ContextData *ContextData `json:"context_data,omitempty"`
 
-	Include string `json:"-"`
+	Include string `json:"-" form="include"`
 }
 type UserPatchResponse struct {
 	User User `json:"user"`
@@ -148,5 +148,5 @@ type UserPatchResponse struct {
 // Uri:
 //   - tg_id
 type UserDeleteRequest struct {
-	TgID int64 `json:"-"`
+	TgID int64 `json:"-" uri="id" binding="required"`
 }
