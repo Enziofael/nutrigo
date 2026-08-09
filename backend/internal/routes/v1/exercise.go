@@ -15,12 +15,11 @@ func RegisterExerciseRoutes(group *gin.RouterGroup, s *server.Server) {
 	service := service.NewExerciseService(repo)
 	handler := handler.NewExerciseHandler(service)
 
-	exercise := group.Group("/exercise")
+	exercises := group.Group("/exercises")
 	{
-		exercise.GET("/:id", handler.Get)
-		//if search == "" handler.Search -> handler.List
-		exercise.GET("/u/:tg_id", handler.Search)
-		exercise.GET("/u/:tg_id/count", handler.Count)
+		exercises.GET("/:id")
+		exercises.PATCH("/:id")
+		exercises.DELETE("/:id")
 	}
 	{
 		exercise.POST("/", handler.Create)
