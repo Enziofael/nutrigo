@@ -18,10 +18,10 @@ type ExerciseEntry struct {
 }
 
 type ExerciseSet struct {
-	ID           int64                `json:"id"       binding:"required"`
-	EntryID      int64                `json:"entry_id" binding:"required"`
-	Measurements ExerciseMeasurements `json:"measurements"    binding:"required"`
-	Reps         int                  `json:"reps"     binding:"omitempty,min=0"`
+	ID           int64                `json:"id,omitempty"       binding:"required"`
+	EntryID      int64                `json:"entry_id,omitempty" binding:"required"`
+	Measurements ExerciseMeasurements `json:"measurements"       binding:"required"`
+	Reps         int                  `json:"reps"               binding:"omitempty,min=0"`
 }
 
 // SHOULD SYNC fields with [UnitPreferences] !
@@ -60,8 +60,11 @@ type ExerciseMeasurements struct {
 
 // # POST /exercise/:id/entry
 //
-// Create entry
-// by exercise id
+// Create entry by exercise id 
+// with its sets
+//
+// Sets IDs will be ignored, you shouldn't fill them
+// (keep zero values)
 //
 // Uri:
 //   - exercise_id
@@ -137,6 +140,41 @@ type ExerciseEntryGetRequest struct {
 type ExerciseEntryGetResponse struct {
 	Entry ExerciseEntry `json:"entry"`
 }
+
+// # PATCH /exercise_entries/:id
+//
+// Patch entry by its id
+// and overwrite all its sets
+//
+// Be careful not to delete or lose
+// sets accidently by overwriting
+// with new ones.
+//
+// Sets IDs will be ignored. You shouldn't fill them
+// (keep zero values)
+//
+// Uri:
+//	- id
+//
+// Body: (at least 1 should be provided. nil won't change the current value)
+// Body:
+//   - [ sets ]
+//   - [ comment ] = "" | <1000
+//
+// Query:
+//   - [ include ] = "" | "comment,sets"+
+type ExerciseEntryPatchRequest struct {
+	ID int64 `json:"-" uri:"id" binding:"required"`
+
+	Sets    *[]ExerciseSet `json:"sets,omitempty"    binding:"omitempty,dive"`
+	Comment *string        `json:"comment,omitempty" binding:"omitempty,max=1000"`
+
+	Include string `json:"-" form:"include"`
+}
+type ExerciseEntryPatchResponse struct {
+	Entry ExerciseEntry `json:"entry"`
+}
+
 
 // # DELETE /exercise_entries/:id
 //
