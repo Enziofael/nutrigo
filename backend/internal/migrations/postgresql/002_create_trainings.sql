@@ -1,39 +1,55 @@
+----------------------------------------------------------------------------------------
+-- TABLE EXERCISES
+
 CREATE TABLE IF NOT EXISTS exercises (
     id SERIAL PRIMARY KEY,
     tg_id INT NOT NULL REFERENCES users(tg_id) ON DELETE CASCADE,
     name VARCHAR NOT NULL,
-    description VARCHAR,
-    technique VARCHAR,
-    weight_unit VARCHAR NOT NULL DEFAULT 'kg'
+    description VARCHAR NOT NULL DEFAULT '',
+    url VARCHAR NOT NULL DEFAULT '',
+    unit_preferences INT NOT NULL DEFAULT 1 CHECK (unit_preferences > 0),
     rating INT NOT NULL DEFAULT 100
 );
-
-ALTER TABLE exercises
-ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-
+-- Adding created_at column
+ALTER TABLE exercises ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+-- Index by tg_id
 CREATE INDEX IF NOT EXISTS idx_exercises_tg_id ON exercises(tg_id);
+
+-- для поиска
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX IF NOT EXISTS idx_exercises_name_trgm ON exercises USING GIN (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_exercises_description_trgm ON exercises USING GIN (description gin_trgm_ops);
+
+----------------------------------------------------------------------------------------
+-- TABLE EXERCISE_ENTRIES
 
 CREATE TABLE IF NOT EXISTS exercise_entries (
     id SERIAL PRIMARY KEY,
-    tg_id INT NOT NULL REFERENCES users(tg_id) ON DELETE CASCADE,
     exercise_id INT NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
     timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     comment VARCHAR
 );
+-- Index by exercise_id
+CREATE INDEX IF NOT EXISTS idx_exercise_entries_tg_id ON exercise_entries(exercise_id);
 
-CREATE INDEX IF NOT EXISTS idx_exercise_entries_tg_id ON exercise_entries(tg_id);
+----------------------------------------------------------------------------------------
+-- TABLE EXERCISE_SETS
 
 CREATE TABLE IF NOT EXISTS exercise_sets (
     id SERIAL PRIMARY KEY,
-    tg_id INT NOT NULL REFERENCES users(tg_id) ON DELETE CASCADE,
     entry_id INT NOT NULL REFERENCES exercise_entries(id) ON DELETE CASCADE,
-    weight_kg DECIMAL NOT NULL,
-    weight_lbs DECIMAL NOT NULL,
-    reps INT NOT NULL,
-    weight_unit VARCHAR NOT NULL
+    measurements JSON NOT NULL,
+    reps INT NOT NULL
 );
+-- Index by entry_id
+CREATE INDEX IF NOT EXISTS idx_exercise_sets_tg_id ON exercise_sets(entry_id);
 
-CREATE INDEX IF NOT EXISTS idx_exercise_sets_tg_id ON exercise_sets(tg_id);
+
+
+
+
+
+
 
 CREATE TABLE IF NOT EXISTS training_programms (
     id SERIAL PRIMARY KEY,
@@ -62,8 +78,3 @@ CREATE TABLE IF NOT EXISTS training_program_days_exercises (
 );
 
 
--- для поиска
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-
-CREATE INDEX IF NOT EXISTS idx_exercises_name_trgm ON exercises USING GIN (name gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS idx_exercises_description_trgm ON exercises USING GIN (description gin_trgm_ops);

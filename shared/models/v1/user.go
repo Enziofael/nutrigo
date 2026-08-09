@@ -1,126 +1,152 @@
 package models
 
 import (
-	"errors"
-	"fmt"
-	"strings"
 	"time"
 )
 
+// =========================================================
+// MODEL
+// =========================================================
+
 type User struct {
-	TgID           int64       `json:"tg_id"              binding:"required,min=1" db:"tg_id"`
-	TgTag          string      `json:"tg_tag"             binding:"required,min=1"  db:"tg_tag"`
-	CreatedAt      time.Time   `json:"created_at"         binding:"required"       db:"created_at"`
-	LastMessagedAt time.Time   `json:"last_messaged_at"   binding:"required"       db:"last_messaged_at"`
-	Status         string      `json:"status"             binding:"required"       db:"status"`
-	Context        string      `json:"context"            binding:"omitempty"      db:"context"`
-	ContextData    ContextData `json:"context_data"       binding:"omitempty"      db:"context_data"`
-}
+	TgID   int64      `json:"tg_id"`
+	TgTag  string     `json:"tg_tag"`
+	Status UserStatus `json:"status"`
 
-func SanitizeTgTag(tag string) (string, error) {
-	clean := strings.TrimSpace(tag)
-	if clean == "" {
-		return "", fmt.Errorf("tg_tag can't be empty")
-	}
-	return clean, nil
-}
-
-func SanitizeStatus(status string) (string, error) {
-	switch status {
-	case StatusRequested, StatusConfirmed, StatusRestricted, StatusBanned, StatusAdmin:
-		return status, nil
-	default:
-		return "", fmt.Errorf("Invalid status: %s", status)
-	}
+	CreatedAt      time.Time   `json:"created_at,omitempty"`
+	LastMessagedAt time.Time   `json:"last_messaged_at,omitempty"`
+	Context        string      `json:"context,omitempty"`
+	ContextData    ContextData `json:"context_data,omitempty"`
+	Exercises      []Exercise  `json:"exercises,omitempty"`
 }
 
 type ContextData struct {
 	MessageID int               `json:"message_id"`
 	Focus     int               `json:"focus"`
-	Values    map[string]string `json:"values"`
+	Values    map[string]string `json:"values,omitempty"`
 }
 
 // =========================================================
-// CRUD REQUESTS
+// DTO
 // =========================================================
 
-// Create by id
+// ====== GLOBAL LEVEL ======
+// /users
+
+// # POST /users
+//
+// Create user
+// by tg id
+//
+// Body:
+//   - tg_id
+//   - tg_tag
+//
+// Query:
+//   - [ include ] = "" | "created_at,last_messaged_at" (Any combination)
 type UserCreateRequest struct {
-	//body
-	TgID  int64  `json:"tg_id"  binding:"required"`
-	TgTag string `json:"tg_tag" binding:"required"`
+	TgID  int64  `json:"tg_id"`
+	TgTag string `json:"tg_tag"`
+
+	Include string `json:"-"`
+}
+type UserCreateResponse struct {
+	User User `json:"user"`
 }
 
-func (req UserCreateRequest) Sanitize() (UserCreateRequest, error) {
-	var errTgID, errTgTag error
-
-	req.TgID, errTgID = SanitizeTgID(req.TgID)
-	req.TgTag, errTgTag = SanitizeTgTag(req.TgTag)
-
-	err := errors.Join(errTgID, errTgTag)
-	return req, err
+// # GET /users
+//
+// List
+// users
+//
+// Query:
+//   - [ offset ] = 0 | >= 0
+//   - [ limit ] = 10 | 0 - 100
+//   - [ sort ] = "last_messaged_at" | "last_messaged_at,created_at" (1)
+//   - [ order ] = "DESC" | "ASC,DESC" (1)
+//   - [ search ] = "" | Any search string (encode!)
+//   - [ include ] = "" | "created_at,last_messaged_at,context" (Any combination)
+type UserListRequest struct {
+	Offset  int    `json:"-"`
+	Limit   int    `json:"-"`
+	Sort    string `json:"-"`
+	Order   Order  `json:"-"`
+	Search  string `json:"-"`
+	Include string `json:"-"`
+}
+type UserListResponse struct {
+	Users  []User `json:"users"`
+	Total  int    `json:"total"`
+	Limit  int    `json:"limit"`
+	Offset int    `json:"offset"`
+	Sort   string `json:"sort"`
+	Order  Order  `json:"order"`
+	Search string `json:"search,omitempty"`
 }
 
-// Delete by id
-type UserDeleteRequest struct {
-	//url
-	TgID int64 `json:"tg_id"  binding:"required"`
-}
+// ====== USER LEVEL ======
+// /users/:id
 
-func (req UserDeleteRequest) Sanitize() (UserDeleteRequest, error) {
-	var errTgID error
-
-	req.TgID, errTgID = SanitizeTgID(req.TgID)
-
-	err := errors.Join(errTgID)
-	return req, err
-}
-
-// Get by id
+// # GET /users/:id
+//
+// Get user
+// by tg id
+//
+// Uri:
+//   - id
+//
+// Query:
+//   - [ include ] = "" | "created_at,last_messaged_at,context,exercises?<exercises_params>" (Any combination)
+//
+// <exercises_params>: see [ExerciseListRequest] query params (encode!)
 type UserGetRequest struct {
-	//url
-	TgID int64 `json:"tg_id"  binding:"required"`
+	TgID int64 `json:"-"`
+
+	Include string `json:"-"`
+}
+type UserGetResponse struct {
+	User User `json:"user"`
 }
 
-func (req UserGetRequest) Sanitize() (UserGetRequest, error) {
-	var errTgID error
-
-	req.TgID, errTgID = SanitizeTgID(req.TgID)
-
-	err := errors.Join(errTgID)
-	return req, err
-}
-
-// Patch by id
+// # PATCH /users/:id
+//
+// Patch user
+// by tg id
+//
+// Uri:
+//   - id
+//
+// Body: (at least 1 should be provided. nil won't change the current value)
+//   - [ tg_tag ] = current | 4-32 (https://skybots.ru/telegram-limity)
+//   - [ status ] = current | "unknown,requested,confirmed,restricted,banned,admin" (1, use [UserStatus] constants)
+//   - [ context ] = current | Any context string
+//   - [ context_data ] = current
+//
+// Query:
+//   - [ include ] = "" | "created_at,last_messaged_at,context,exercises?<exercises_params>" (Any combination)
+//
+// <exercises_params>: see [ExerciseListRequest] query params (encode!)
 type UserPatchRequest struct {
-	//url
-	TgID int64 `json:"tg_id" binding:"required"`
+	TgID int64 `json:"-"`
 
-	//body optional (at least 1)
-	TgTag       *string      `json:"tg_tag"`
-	Status      *string      `json:"status"`
-	Context     *string      `json:"context_id"`
-	ContextData *ContextData `json:"context_data"`
+	TgTag       *string      `json:"tg_tag,omitempty"`
+	Status      *UserStatus  `json:"status,omitempty"`
+	Context     *string      `json:"context,omitempty"`
+	ContextData *ContextData `json:"context_data,omitempty"`
+
+	Include string `json:"-"`
+}
+type UserPatchResponse struct {
+	User User `json:"user"`
 }
 
-func (req UserPatchRequest) Sanitize() (UserPatchRequest, error) {
-	var errTgID, errTgTag, errStatus, errLeast error
-
-	req.TgID, errTgID = SanitizeTgID(req.TgID)
-	if req.TgTag != nil {
-		var t string
-		t, errTgTag = SanitizeTgTag(*req.TgTag)
-		req.TgTag = &t
-	}
-	if req.Status != nil {
-		var s string
-		s, errStatus = SanitizeStatus(*req.Status)
-		req.Status = &s
-	}
-	if req.TgTag == nil && req.Status == nil && req.Context == nil && req.ContextData == nil {
-		errLeast = errors.New("At least 1 optional field should be provided")
-	}
-
-	err := errors.Join(errTgID, errTgTag, errStatus, errLeast)
-	return req, err
+// # DELETE /users/:id
+//
+// Delete user
+// by tg id
+//
+// Uri:
+//   - tg_id
+type UserDeleteRequest struct {
+	TgID int64 `json:"-"`
 }
