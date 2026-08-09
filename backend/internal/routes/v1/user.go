@@ -15,17 +15,18 @@ func RegisterUserRoutes(group *gin.RouterGroup, s *server.Server) {
 	service := service.NewUserService(repo)
 	handler := handler.NewUserHandler(service)
 
-	user := group.Group("/user")
+	users := group.Group("/users")
 	{
-		user.GET("/:tg_id", handler.Get)
+		users.POST("/", handler.Create)
+		users.GET("/", handler.Get)
 	}
 	{
-		user.POST("/", handler.Create)
+		users.GET("/:id", handler.Get)
+		users.PATCH("/:id", handler.Patch)
+		users.DELETE("/:id", handler.Delete)
 	}
 	{
-		user.PATCH("/:tg_id", handler.Patch)
-	}
-	{
-		user.DELETE("/:tg_id", handler.Delete)
+		users.POST("/:id/exercises")
+		users.GET("/:id/exercises")
 	}
 }
