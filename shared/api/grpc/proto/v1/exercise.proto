@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/Enziofael/nutrigo/shared/api/grpc/generated/go/v1;v1";
+
+message Exercise {
+  int64 id = 1;
+  int64 user_id = 2;
+
+  optional string name = 3;
+  optional string description = 4;
+  optional string url = 5;
+  optional int32 unit_preferences = 6;
+  optional int32 rating = 7;
+  optional google.protobuf.Timestamp created_at = 8;
+  optional int64 version = 9;
+}

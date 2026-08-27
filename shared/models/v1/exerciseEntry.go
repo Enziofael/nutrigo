@@ -4,6 +4,13 @@ import (
 	"time"
 )
 
+func init() {
+	exerciseEntryCreateRequest_IncludeQuery = NewIncludeQuery(ExerciseEntryCreateRequest{})
+	exerciseEntryListRequest_IncludeQuery = NewIncludeQuery(ExerciseEntryListRequest{})
+	exerciseEntryGetRequest_IncludeQuery = NewIncludeQuery(ExerciseEntryGetRequest{})
+	exerciseEntryPatchRequest_IncludeQuery = NewIncludeQuery(ExerciseEntryPatchRequest{})
+}
+
 // =========================================================
 // MODEL
 // =========================================================
@@ -23,8 +30,6 @@ type ExerciseSet struct {
 	Measurements ExerciseMeasurements `json:"measurements"       binding:"required"`
 	Reps         int                  `json:"reps"               binding:"omitempty,min=0"`
 }
-
-// SHOULD SYNC fields with [UnitPreferences] !
 
 // # Kg & lbs:
 //
@@ -49,18 +54,18 @@ type ExerciseMeasurements struct {
 	Time  time.Duration `json:"time,omitempty"  binding:"omitempty,min=0"`
 	Km    float64       `json:"km,omitempty"    binding:"omitempty,min=0"`
 	Miles float64       `json:"miles,omitempty" binding:"omitempty,min=0"`
-}
+} // SHOULD SYNC fields with [UnitPreferences] !
 
 // =========================================================
 // DTO
 // =========================================================
 
 // ===== EXERCISE LEVEL =====
-// /exercises/:id/entry
+// /exercises/:exercise_id/entries
 
-// # POST /exercise/:id/entry
+// # POST /exercise/:exercise_id/entries
 //
-// Create entry by exercise id 
+// Create entry by exercise id
 // with its sets
 //
 // Sets IDs will be ignored, you shouldn't fill them
@@ -76,7 +81,7 @@ type ExerciseMeasurements struct {
 // Query:
 //   - [ include ] = "" | "comment,sets"+
 type ExerciseEntryCreateRequest struct {
-	ExerciseID int64 `json:"-" uri:"id" binding:"required"`
+	ExerciseID int64 `json:"-" uri:"exercise_id" binding:"required"`
 
 	Sets    []ExerciseSet `json:"sets"              binding:"required,dive"`
 	Comment *string       `json:"comment,omitempty" binding:"omitempty,max=1000"`
@@ -87,7 +92,16 @@ type ExerciseEntryCreateResponse struct {
 	Entry ExerciseEntry `json:"entry"`
 }
 
-// # GET /exercises/:id/entry
+var exerciseEntryCreateRequest_IncludeQuery IncludeQuery
+
+func (ExerciseEntryCreateRequest) AllowedParams() string {
+	return "comment,sets"
+}
+func (req ExerciseEntryCreateRequest) GetIncludeQuery() IncludeQuery {
+	return exerciseEntryCreateRequest_IncludeQuery
+}
+
+// # GET /exercises/:exercise_id/entries
 //
 // List entries
 // by exercise id
@@ -102,7 +116,7 @@ type ExerciseEntryCreateResponse struct {
 //   - [ order ] = "DESC" | "ASC,DESC" (use [Order] constants)
 //   - [ include ] = "" | "comment,sets"+
 type ExerciseEntryListRequest struct {
-	ExerciseID int64 `json:"-" uri:"id" binding:"required"`
+	ExerciseID int64 `json:"-" uri:"exercise_id" binding:"required"`
 
 	Limit   int    `json:"-" form:"limit"   binding:"omitempty,min=1,max=100"`
 	Offset  int    `json:"-" form:"offset"  binding:"omitempty,min=0"`
@@ -117,6 +131,15 @@ type ExerciseEntryListResponse struct {
 	Offset  int             `json:"offset"`
 	Sort    string          `json:"sort"`
 	Order   Order           `json:"order"`
+}
+
+var exerciseEntryListRequest_IncludeQuery IncludeQuery
+
+func (ExerciseEntryListRequest) AllowedParams() string {
+	return "comment,sets"
+}
+func (req ExerciseEntryListRequest) GetIncludeQuery() IncludeQuery {
+	return exerciseEntryListRequest_IncludeQuery
 }
 
 // ===== EXERCISE_ENTRY LEVEL =====
@@ -141,6 +164,15 @@ type ExerciseEntryGetResponse struct {
 	Entry ExerciseEntry `json:"entry"`
 }
 
+var exerciseEntryGetRequest_IncludeQuery IncludeQuery
+
+func (ExerciseEntryGetRequest) AllowedParams() string {
+	return "comment,sets"
+}
+func (req ExerciseEntryGetRequest) GetIncludeQuery() IncludeQuery {
+	return exerciseEntryGetRequest_IncludeQuery
+}
+
 // # PATCH /exercise_entries/:id
 //
 // Patch entry by its id
@@ -154,7 +186,7 @@ type ExerciseEntryGetResponse struct {
 // (keep zero values)
 //
 // Uri:
-//	- id
+//   - id
 //
 // Body: (at least 1 should be provided. nil won't change the current value)
 // Body:
@@ -175,6 +207,14 @@ type ExerciseEntryPatchResponse struct {
 	Entry ExerciseEntry `json:"entry"`
 }
 
+var exerciseEntryPatchRequest_IncludeQuery IncludeQuery
+
+func (ExerciseEntryPatchRequest) AllowedParams() string {
+	return "comment,sets"
+}
+func (req ExerciseEntryPatchRequest) GetIncludeQuery() IncludeQuery {
+	return exerciseEntryPatchRequest_IncludeQuery
+}
 
 // # DELETE /exercise_entries/:id
 //

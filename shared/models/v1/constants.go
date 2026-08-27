@@ -20,8 +20,6 @@ func (o Order) Validate() bool {
 	}
 }
 
-var ErrInvalidOrder error = errors.New("invalid sort order")
-
 // UNIT PREFERENCE
 
 // Valid values [1;23]
@@ -41,9 +39,9 @@ const (
 )
 
 const (
-	unitPreferences_restriction_km_miles = 0b11_0_00
-	unitPreferences_min UnitPreferences = UnitPreference_Kg
-	unitPreferences_max UnitPreferences = UnitPreference_Kg | UnitPreference_Lbs | UnitPreference_Time | UnitPreference_Km | UnitPreference_Miles
+	unitPreferences_restriction_km_miles                 = 0b11_0_00
+	unitPreferences_min                  UnitPreferences = UnitPreference_Kg
+	unitPreferences_max                  UnitPreferences = UnitPreference_Kg | UnitPreference_Lbs | UnitPreference_Time | UnitPreference_Km | UnitPreference_Miles
 )
 
 func (p UnitPreferences) Validate() bool {
@@ -92,10 +90,17 @@ func (p UnitPreferences) IncludesMiles() bool {
 	return p.Includes(UnitPreference_Miles)
 }
 
-var ErrInvalidUnitPreference error = errors.New("invalid unit preference")
+var ErrInvalidUnitPreferences error = errors.New("invalid unit preferences")
 
 // USERSTATUS
 
+// Valid values:
+//	- [UserStatus_Unknown]    = "unknown"
+//	- [UserStatus_Requested]  = "requested"
+//	- [UserStatus_Confirmed]  = "confirmed"
+//	- [UserStatus_Restricted] = "restricted"
+//	- [UserStatus_Banned]     = "banned"
+//	- [UserStatus_Admin]      = "admin"
 type UserStatus string
 
 const (
@@ -118,4 +123,4 @@ func (s UserStatus) Validate() bool {
 	}
 }
 
-var ErrInvalidUserStatus error = errors.New("invalid user status")
+const SearchThreshold float64 = 0.1
