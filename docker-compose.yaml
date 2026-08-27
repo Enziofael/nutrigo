@@ -9,7 +9,7 @@ services:
     ports:
       - "${DB_PORT}:${DB_PORT}"
     volumes:
-      - ./backend/internal/migrations/postgresql/:/docker-entrypoint-initdb.d/
+      #- ./backend/internal/migrations/postgresql/:/docker-entrypoint-initdb.d/
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:

@@ -12,13 +12,14 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const DOTENV_SEARCHING_DEPTH int = 5
+
 // Loads .env file in godotenv
 func init() {
 
-	maxAttempts := 5
 	envPath := ".env"
 
-	for i := 0; i < maxAttempts; i++ {
+	for i := 0; i < DOTENV_SEARCHING_DEPTH; i++ {
 
 		log.Printf("Loading .env attempt №%v", i)
 		err := godotenv.Load(envPath)
@@ -26,7 +27,7 @@ func init() {
 			log.Printf("- Loaded succesfully after attempt #%v with path %v", i, envPath)
 			return
 		} else {
-			if i == maxAttempts-1 {
+			if i == DOTENV_SEARCHING_DEPTH-1 {
 				log.Fatalf("Fatal error loading .env file after %v attempts: %s", i, err)
 			}
 		}
